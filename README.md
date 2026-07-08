@@ -472,33 +472,7 @@ FINAL,PROXY
 
 ---
 
-## 11. SEO 与关键词
 
-SEO 描述和关键词放在：
-
-```text
-docs/SEO.md
-docs/KEYWORDS.md
-```
-
-推荐 GitHub Topics：
-
-```text
-clash-verge
-mihomo
-clash-meta
-shadowrocket
-proxy-group
-url-test
-proxy-rules
-chatgpt-proxy
-openai-proxy
-ai-proxy
-regex-filter
-```
-
----
-
-## 12. 免责声明
+## 11. 免责声明
 
 本仓库仅用于个人网络配置学习与备忘，不包含任何机场订阅链接、节点密码或账号信息。实际访问效果取决于节点质量、服务支持地区、网络环境和客户端版本。
