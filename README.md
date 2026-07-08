@@ -55,7 +55,7 @@ FINAL,PROXY
 
 这表示实际流量仍然走 `PROXY`，而不是走 `发达国家自动`。
 
-所以 Shadowrocket 的关键不是“有没有建分组”，而是：
+所以 Shadowrocket 的关键是：
 
 ```text
 规则里的策略名
