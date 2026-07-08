@@ -2,7 +2,6 @@
 
 本仓库整理 Clash Verge / Mihomo / Shadowrocket 的代理组配置方法，重点解决 AI 服务分流、非港澳发达地区自动选择、美国专用代理组、Shadowrocket `PROXY` 规则替换等问题。
 
-> 注意：不要上传自己的机场订阅链接、节点密码、token、完整机场配置文件。本仓库只放规则片段、正则表达式和脚本模板。
 
 ---
 
@@ -357,12 +356,9 @@ proxy-group-notes
 │   └── clash-verge-developed.js
 │
 ├── configs
-│   ├── shadowrocket-developed.conf
-│   └── shadowrocket-us.conf
-│
-└── docs
-    ├── SEO.md
-    └── KEYWORDS.md
+    ├── shadowrocket-developed.conf
+    └── shadowrocket-us.conf
+
 ```
 
 ---
