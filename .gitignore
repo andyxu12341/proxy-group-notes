@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Local secrets and private configs
+*.local
+*.private
+*.secret
+*.token
+*.env
+.env
+
+# Do not commit full exported proxy profiles
+full-configs/
+subscriptions/
