@@ -94,126 +94,28 @@ function createMrsRuleProvider(behavior, url, path) {
 }
 
 function injectRuleProviders(config) {
-  if (!config["rule-providers"] || typeof config["rule-providers"] !== "object") {
-    config["rule-providers"] = {};
-  }
-
   var geosite = "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/";
-  var geoip = "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/";
-  var rules = {
-    reject: createMrsRuleProvider("domain", geosite + "category-ads-all.mrs", "./rules/geosite-category-ads-all.mrs"),
-    cn: createMrsRuleProvider("domain", geosite + "cn.mrs", "./rules/geosite-cn.mrs"),
-    openai: createMrsRuleProvider("domain", geosite + "openai.mrs", "./rules/geosite-openai.mrs"),
-    google: createMrsRuleProvider("domain", geosite + "google.mrs", "./rules/geosite-google.mrs"),
-    youtube: createMrsRuleProvider("domain", geosite + "youtube.mrs", "./rules/geosite-youtube.mrs"),
-    telegram: createMrsRuleProvider("domain", geosite + "telegram.mrs", "./rules/geosite-telegram.mrs"),
-    telegram_ip: createMrsRuleProvider("ipcidr", geoip + "telegram.mrs", "./rules/geoip-telegram.mrs"),
-    github: createMrsRuleProvider("domain", geosite + "github.mrs", "./rules/geosite-github.mrs"),
-    microsoft: createMrsRuleProvider("domain", geosite + "microsoft.mrs", "./rules/geosite-microsoft.mrs"),
-    apple: createMrsRuleProvider("domain", geosite + "apple.mrs", "./rules/geosite-apple.mrs"),
-    netflix: createMrsRuleProvider("domain", geosite + "netflix.mrs", "./rules/geosite-netflix.mrs"),
-    spotify: createMrsRuleProvider("domain", geosite + "spotify.mrs", "./rules/geosite-spotify.mrs")
-  };
 
-  for (var name in rules) {
-    if (Object.prototype.hasOwnProperty.call(rules, name)) {
-      config["rule-providers"][name] = rules[name];
-    }
-  }
+  // 极简规则集：只保留中国大陆域名集合。
+  // 国内网站直连；其他所有流量交给“节点选择”。
+  config["rule-providers"] = {
+    cn: createMrsRuleProvider("domain", geosite + "cn.mrs", "./rules/geosite-cn.mrs")
+  };
 
   return config;
 }
 
-function startsWithAny(value, prefixes) {
-  if (typeof value !== "string") return false;
-  var lower = value.toLowerCase();
-  for (var i = 0; i < prefixes.length; i++) {
-    if (lower.indexOf(prefixes[i]) === 0) return true;
-  }
-  return false;
-}
-
-function isManagedRule(rule) {
-  return startsWithAny(rule, [
-    "rule-set,reject,",
-    "rule-set,openai,",
-    "domain-suffix,chatgpt.com,",
-    "domain-suffix,oaistatic.com,",
-    "domain-suffix,oaiusercontent.com,",
-    "domain-suffix,anthropic.com,",
-    "domain-suffix,claude.ai,",
-    "domain-suffix,gemini.google.com,",
-    "domain-suffix,perplexity.ai,",
-    "domain-suffix,poe.com,",
-    "domain-suffix,notebooklm.google.com,",
-    "domain-suffix,aistudio.google.com,",
-    "domain-suffix,ai.google.dev,",
-    "domain-suffix,makersuite.google.com,",
-    "domain-suffix,generativelanguage.googleapis.com,",
-    "domain-suffix,openrouter.ai,",
-    "rule-set,google,",
-    "rule-set,youtube,",
-    "rule-set,telegram,",
-    "rule-set,telegram_ip,",
-    "rule-set,github,",
-    "rule-set,netflix,",
-    "rule-set,spotify,",
-    "rule-set,apple,",
-    "rule-set,microsoft,",
-    "rule-set,cn,",
-    "geoip,private,",
-    "geoip,cn,",
-    "match,"
-  ]);
-}
-
 function injectRules(config) {
-  var DEV_NAME = "🌐 发达地区自动";
   var ENTRY_NAME = "节点选择";
-  var existingRules = Array.isArray(config.rules) ? config.rules : [];
-  var customRules = [];
 
-  for (var i = 0; i < existingRules.length; i++) {
-    var rule = existingRules[i];
-    if (!isManagedRule(rule)) customRules.push(rule);
-  }
-
-  var headRules = [
-    "RULE-SET,reject,REJECT",
-    "RULE-SET,openai," + DEV_NAME,
-    "DOMAIN-SUFFIX,chatgpt.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,oaistatic.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,oaiusercontent.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,anthropic.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,claude.ai," + DEV_NAME,
-    "DOMAIN-SUFFIX,gemini.google.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,perplexity.ai," + DEV_NAME,
-    "DOMAIN-SUFFIX,poe.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,notebooklm.google.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,aistudio.google.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,ai.google.dev," + DEV_NAME,
-    "DOMAIN-SUFFIX,makersuite.google.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,generativelanguage.googleapis.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,openrouter.ai," + DEV_NAME,
-    "RULE-SET,google," + DEV_NAME,
-    "RULE-SET,youtube," + DEV_NAME,
-    "RULE-SET,telegram," + DEV_NAME,
-    "RULE-SET,telegram_ip," + DEV_NAME + ",no-resolve",
-    "RULE-SET,github," + DEV_NAME,
-    "RULE-SET,netflix," + ENTRY_NAME,
-    "RULE-SET,spotify," + ENTRY_NAME,
-    "RULE-SET,apple,DIRECT",
-    "RULE-SET,microsoft,DIRECT"
-  ];
-
-  var tailRules = [
+  // 极简分流：国内直连，其他全部交给节点选择。
+  config.rules = [
     "RULE-SET,cn,DIRECT",
     "GEOIP,private,DIRECT,no-resolve",
     "GEOIP,CN,DIRECT",
     "MATCH," + ENTRY_NAME
   ];
 
-  config.rules = headRules.concat(customRules).concat(tailRules);
   return config;
 }
 
