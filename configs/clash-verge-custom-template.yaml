@@ -1,0 +1,83 @@
+# Clash Verge / Mihomo 自定义代理组模板
+#
+# 用途：按节点名称自定义 url-test 代理组，例如日本自动、欧洲自动、家宽自动、IEPL 自动等。
+# 将 SUBSCRIPTION_URL_A / SUBSCRIPTION_URL_B 替换为订阅地址，或将 use 中的 provider 名称改为现有 provider。
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: false
+
+proxy-providers:
+  sub_a:
+    type: http
+    url: "SUBSCRIPTION_URL_A"
+    path: ./providers/sub_a.yaml
+    interval: 86400
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+
+  sub_b:
+    type: http
+    url: "SUBSCRIPTION_URL_B"
+    path: ./providers/sub_b.yaml
+    interval: 86400
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies:
+      - CUSTOM 自动
+      - 日本自动
+      - 美日新自动
+      - DIRECT
+
+  - name: CUSTOM 自动
+    type: url-test
+    use:
+      - sub_a
+      - sub_b
+    filter: '(?i)(CUSTOM_INCLUDE_REGEX)'
+    exclude-filter: '(?i)(香港|hong[ -]?kong|\bhk\b|\bhkg\b|澳门|澳門|macau|\bmo\b|剩余|流量|套餐|到期|重置|官网|官方|通知|重要|客户端|更新|升级|旧节点|帮助中心)'
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+    expected-status: 204
+
+  - name: 日本自动
+    type: url-test
+    use:
+      - sub_a
+      - sub_b
+    filter: '(?i)(日本|东京|東京|大阪|\bjp\b|japan|tokyo|osaka|🇯🇵)'
+    exclude-filter: '(?i)(香港|hong[ -]?kong|\bhk\b|\bhkg\b|澳门|澳門|macau|\bmo\b|剩余|流量|套餐|到期|重置|官网|官方|通知|重要|客户端|更新|升级|旧节点|帮助中心)'
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+    expected-status: 204
+
+  - name: 美日新自动
+    type: url-test
+    use:
+      - sub_a
+      - sub_b
+    filter: '(?i)(美国|美國|\bus\b|\busa\b|united states|america|日本|东京|東京|大阪|\bjp\b|japan|tokyo|osaka|新加坡|狮城|獅城|\bsg\b|singapore|🇺🇸|🇯🇵|🇸🇬)'
+    exclude-filter: '(?i)(香港|hong[ -]?kong|\bhk\b|\bhkg\b|澳门|澳門|macau|\bmo\b|剩余|流量|套餐|到期|重置|官网|官方|通知|重要|客户端|更新|升级|旧节点|帮助中心)'
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+    expected-status: 204
+
+rules:
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择
