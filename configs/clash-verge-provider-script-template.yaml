@@ -1,14 +1,11 @@
-# Clash Verge / Mihomo：proxy-providers + 全局扩展脚本模板
+# Clash Verge / Mihomo：proxy-providers + 全局扩展脚本极简模板
 #
-# 用途：YAML 只维护订阅来源、主入口和规则；代理组由 scripts/clash-verge-developed.js 自动生成。
-#
-# 需要配合：
-# - scripts/clash-verge-developed.js
+# 用途：YAML 只维护订阅来源；代理组、rule-providers 和 rules 由 scripts/clash-verge-developed.js 自动注入。
 #
 # 脚本会自动读取 proxy-providers 下的所有 provider 名称，并生成：
-# - 🌐 发达地区自动
-# - 🇺🇸 美国自动
-# - ♻️ 全部自动
+# - proxy-groups：🌐 发达地区自动 / 🇺🇸 美国自动 / ♻️ 全部自动 / 节点选择
+# - rule-providers：MetaCubeX 动态规则集
+# - rules：AI、Google、YouTube、Telegram、GitHub、流媒体、国内直连、兜底规则
 
 mixed-port: 7890
 allow-lan: false
@@ -58,26 +55,3 @@ proxy-providers:
       enable: true
       url: https://www.gstatic.com/generate_204
       interval: 300
-
-proxy-groups:
-  - name: 节点选择
-    type: select
-    proxies:
-      - 🌐 发达地区自动
-      - 🇺🇸 美国自动
-      - ♻️ 全部自动
-      - DIRECT
-
-rules:
-  - DOMAIN-SUFFIX,openai.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,chatgpt.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,oaistatic.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,oaiusercontent.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,anthropic.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,claude.ai,🌐 发达地区自动
-  - DOMAIN-SUFFIX,gemini.google.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,google.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,googleapis.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,gstatic.com,🌐 发达地区自动
-  - GEOIP,CN,DIRECT
-  - MATCH,节点选择
