@@ -18,6 +18,25 @@ function upsertGroup(groups, group) {
   return groups;
 }
 
+function removeGroupByName(groups, name) {
+  var result = [];
+  for (var i = 0; i < groups.length; i++) {
+    if (groups[i] && groups[i].name === name) continue;
+    result.push(groups[i]);
+  }
+  return result;
+}
+
+function removeProxyByName(proxies, name) {
+  if (!Array.isArray(proxies)) return [];
+  var result = [];
+  for (var i = 0; i < proxies.length; i++) {
+    if (proxies[i] === name) continue;
+    result.push(proxies[i]);
+  }
+  return result;
+}
+
 function getProviderNames(config) {
   var providers = config && config["proxy-providers"];
   if (!providers || typeof providers !== "object") return [];
@@ -207,8 +226,10 @@ function ensureEntryGroup(groups, groupNames, providerNames) {
     var group = groups[i];
     if (!group) continue;
 
+    if (!Array.isArray(group.proxies)) group.proxies = [];
+    group.proxies = removeProxyByName(group.proxies, "♻️ 全部自动");
+
     if (group.name === STANDARD_ENTRY_NAME && group.type === "select") {
-      if (!Array.isArray(group.proxies)) group.proxies = [];
       group.proxies = uniqPrepend(group.proxies, groupNames);
       group = attachEntrySources(group, providerNames);
       groups[i] = group;
@@ -217,7 +238,6 @@ function ensureEntryGroup(groups, groupNames, providerNames) {
     }
 
     if (group.type === "select" && entryNameRegex.test(group.name || "")) {
-      if (!Array.isArray(group.proxies)) group.proxies = [];
       group.proxies = uniqPrepend(group.proxies, groupNames);
       group = attachEntrySources(group, providerNames);
       groups[i] = group;
@@ -328,10 +348,10 @@ function main(config, profileName) {
     "南非", "south africa", "\\bza\\b"
   ];
 
-  groups = upsertGroup(groups, createUrlTestGroup(ALL_NAME, null, makeRegex(infoItems), providerNames, 50));
+  groups = removeGroupByName(groups, ALL_NAME);
   groups = upsertGroup(groups, createUrlTestGroup(US_NAME, makeRegex(usItems), makeRegex(infoItems), providerNames, 50));
   groups = upsertGroup(groups, createUrlTestGroup(DEV_NAME, makeRegex(developedItems), makeRegex(regionExcludeItems.concat(infoItems)), providerNames, 50));
-  groups = ensureEntryGroup(groups, [DEV_NAME, US_NAME, ALL_NAME], providerNames);
+  groups = ensureEntryGroup(groups, [DEV_NAME, US_NAME], providerNames);
 
   config["proxy-groups"] = groups;
   config = injectRuleProviders(config);
