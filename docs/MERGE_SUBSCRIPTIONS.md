@@ -1,43 +1,38 @@
-# Clash Verge / Mihomo 双订阅合并方法
+# 多订阅合并方法
 
-本文说明如何在 Clash Verge Rev / Mihomo 中把两个机场订阅的节点合并到同一个配置里，并统一使用 `🌐 发达地区自动`、`🇺🇸 美国自动` 等代理组。
+本文说明 Clash Verge / Mihomo 与 Shadowrocket 中的多订阅合并逻辑，并给出对应模板。
 
-> 不要把真实订阅链接、token、节点密码提交到 GitHub。本仓库只保存模板和规则。
+多订阅合并的目标是让多个订阅来源中的节点进入同一个代理组，再通过地区策略进行筛选。
 
 ---
 
-## 1. 为什么不是直接在 Clash Verge 添加两个订阅？
+## 1. 合并逻辑概览
 
-Clash Verge 里添加两个订阅，通常只是添加了两个 Profile。实际使用时一般只会启用其中一个完整配置。
+### 1.1 Clash Verge / Mihomo
+
+Clash Verge / Mihomo 推荐使用 `proxy-providers` 合并多个订阅来源。
 
 ```text
 订阅 A
++
 订阅 B
+↓
+proxy-providers
+↓
+同一个 proxy-groups
 ```
 
-并不等于：
-
-```text
-订阅 A 的节点 + 订阅 B 的节点一起可选
-```
-
-要让两个订阅的节点一起参与同一个代理组，推荐使用 Mihomo 的 `proxy-providers`。
-
----
-
-## 2. 推荐方案：proxy-providers 合并
-
-核心逻辑是：
+核心结构：
 
 ```yaml
 proxy-providers:
   sub_a:
     type: http
-    url: "第一个订阅链接"
+    url: "SUBSCRIPTION_URL_A"
 
   sub_b:
     type: http
-    url: "第二个订阅链接"
+    url: "SUBSCRIPTION_URL_B"
 
 proxy-groups:
   - name: 🌐 发达地区自动
@@ -47,19 +42,28 @@ proxy-groups:
       - sub_b
 ```
 
-`use` 表示这个代理组同时使用两个订阅来源的节点。
+`use` 表示该代理组同时使用多个 provider 中的节点。
+
+### 1.2 Shadowrocket
+
+Shadowrocket 不使用 Mihomo 的 `proxy-providers`，也没有 Clash Verge 的全局扩展脚本。多订阅通常有两种方式：
+
+```text
+方式 A：同一个代理组直接引用多个订阅名称
+方式 B：先通过 Sub-Store / 订阅转换生成合并订阅，再在 Shadowrocket 中筛选
+```
 
 ---
 
-## 3. 模板文件位置
+## 2. Clash Verge / Mihomo 多订阅合并
 
-可直接复制下面这个模板：
+### 2.1 模板文件
 
 ```text
 configs/clash-verge-merge-template.yaml
 ```
 
-模板已经包含：
+模板包含：
 
 ```text
 节点选择
@@ -71,161 +75,208 @@ AI 服务分流规则
 MATCH 兜底规则
 ```
 
----
+### 2.2 使用步骤
 
-## 4. 使用步骤
-
-### 4.1 复制模板
-
-复制：
-
-```text
-configs/clash-verge-merge-template.yaml
-```
-
-到你本地，例如：
+复制模板为本地配置文件，例如：
 
 ```text
 merged-local.yaml
 ```
 
-### 4.2 替换订阅链接
-
-把模板里的：
+替换模板中的订阅占位符：
 
 ```yaml
 url: "SUBSCRIPTION_URL_A"
 url: "SUBSCRIPTION_URL_B"
 ```
 
-替换成自己的两个订阅链接。
+在 Clash Verge Rev 中导入：
 
-示例：
+```text
+订阅
+→ 新建
+→ 本地配置 / Local File
+→ 选择 merged-local.yaml
+→ 保存
+→ 切换到该配置
+→ 刷新 / 更新
+→ 测试延迟
+```
+
+### 2.3 YAML 合并 + 全局扩展脚本
+
+Clash Verge / Mihomo 也可以采用“订阅来源”和“筛选策略”分离的结构：
+
+```text
+YAML：负责定义多个订阅来源
+全局扩展脚本：负责自动生成地区代理组
+```
+
+YAML 中只维护 provider：
 
 ```yaml
 proxy-providers:
   sub_a:
     type: http
-    url: "https://example.com/sub-a"
+    url: "SUBSCRIPTION_URL_A"
 
   sub_b:
     type: http
-    url: "https://example.com/sub-b"
+    url: "SUBSCRIPTION_URL_B"
 ```
 
-真实订阅链接不要发给别人，也不要上传 GitHub。
-
-### 4.3 在 Clash Verge 导入
-
-```text
-Clash Verge Rev
-→ 订阅
-→ 新建
-→ 本地配置 / Local File
-→ 选择 merged-local.yaml
-→ 保存
-→ 切换到这个配置
-→ 刷新 / 更新
-→ 测试延迟
-```
-
----
-
-## 5. 发达地区自动组的策略
-
-`🌐 发达地区自动` 覆盖：
-
-```text
-台湾、新加坡、日本、韩国、美国、加拿大、英国、澳大利亚、新西兰、以色列、瑞士、挪威、冰岛、列支敦士登、安道尔、摩纳哥、圣马力诺、梵蒂冈、全部欧盟成员国
-```
-
-欧盟成员国包括：
-
-```text
-奥地利、比利时、保加利亚、克罗地亚、塞浦路斯、捷克、丹麦、爱沙尼亚、芬兰、法国、德国、希腊、匈牙利、爱尔兰、意大利、拉脱维亚、立陶宛、卢森堡、马耳他、荷兰、波兰、葡萄牙、罗马尼亚、斯洛伐克、斯洛文尼亚、西班牙、瑞典
-```
-
-排除：
-
-```text
-香港、澳门、俄罗斯、白俄罗斯、乌克兰、土耳其、阿联酋、尼日利亚、菲律宾、泰国、越南、印度、印尼、马来西亚、巴西、阿根廷、南非
-```
-
-同时排除：
-
-```text
-剩余流量、套餐到期、流量重置、官网通知、客户端更新提示、备用域名、旧节点提示、帮助中心等非真实节点
-```
-
----
-
-## 6. 与全局扩展脚本的关系
-
-有两种方式可以得到 `🌐 发达地区自动`：
-
-### 6.1 单订阅 / 普通订阅：用全局扩展脚本
+再由以下脚本自动创建 `🌐 发达地区自动`：
 
 ```text
 scripts/clash-verge-developed.js
 ```
 
-适合已经在 Clash Verge 里导入了某个订阅，希望在该订阅加载后自动生成 `🌐 发达地区自动`。
+这种方式适合频繁调整订阅来源，但希望地区筛选策略保持统一的配置体系。
 
-### 6.2 双订阅合并：用 proxy-providers 模板
+---
+
+## 3. Shadowrocket 多订阅合并
+
+### 3.1 多订阅名直接引用
+
+如果 Shadowrocket 中已经存在多个订阅来源，可以在同一个代理组中直接引用多个订阅名称。
+
+模板文件：
+
+```text
+configs/shadowrocket-multi-developed.conf
+```
+
+核心结构：
+
+```ini
+PROXY = url-test,<SUBSCRIPTION_NAME_A>,<SUBSCRIPTION_NAME_B>,use=true,url=http://www.gstatic.com/generate_204,policy-regex-filter=...
+```
+
+示例：
+
+```ini
+PROXY = url-test,SakuraCat,api.efanyunapi.com,use=true,url=http://www.gstatic.com/generate_204,policy-regex-filter=...
+```
+
+订阅名称应与 Shadowrocket 配置中显示的名称一致。
+
+适用场景：
+
+```text
+多个订阅都已在 Shadowrocket 中可用
+希望一个代理组同时筛选多个订阅中的节点
+规则集中指向 PROXY
+```
+
+### 3.2 Sub-Store / 订阅转换合并
+
+另一种方式是先在外部工具中合并订阅，再导入 Shadowrocket。
+
+```text
+订阅 A
++
+订阅 B
+↓
+Sub-Store / 订阅转换
+↓
+合并订阅
+↓
+Shadowrocket 导入合并订阅
+↓
+PROXY = url-test,合并订阅名,use=true,policy-regex-filter=...
+```
+
+适用场景：
+
+```text
+需要多个客户端共用同一个合并订阅
+需要统一节点命名
+需要节点去重、重命名或加前缀
+```
+
+### 3.3 Shadowrocket 与 YAML
+
+部分 Shadowrocket 配置支持 `yaml = true`，但这不等同于支持 Clash Verge 的全局扩展脚本。
+
+因此，Shadowrocket 多订阅合并的主方案应优先使用：
+
+```text
+多订阅名引用
+Sub-Store / 订阅转换
+```
+
+而不是依赖 Clash Verge 的脚本机制。
+
+---
+
+## 4. 地区策略
+
+多订阅合并后，可以继续使用三类地区策略。
+
+### 4.1 全部发达地区
+
+覆盖非港澳发达国家 / 地区与全部欧盟成员国。
+
+相关文件：
+
+```text
+scripts/clash-verge-developed.js
+configs/clash-verge-merge-template.yaml
+configs/shadowrocket-developed.conf
+configs/shadowrocket-multi-developed.conf
+configs/shadowrocket-developed-region-regex.txt
+```
+
+### 4.2 美国自动
+
+只筛选美国相关节点。
+
+相关文件：
 
 ```text
 configs/clash-verge-merge-template.yaml
+configs/shadowrocket-us.conf
 ```
 
-适合两个订阅一起使用。两个订阅会作为 `sub_a` 和 `sub_b` 被同一个代理组调用。
+### 4.3 自定义模板
+
+用于按实际节点命名规则建立新的自动代理组。
+
+相关文件：
+
+```text
+configs/clash-verge-custom-template.yaml
+configs/shadowrocket-custom-template.conf
+```
 
 ---
 
-## 7. 常见问题
+## 5. 常见问题
 
-### 7.1 两个订阅添加到 Clash Verge 后为什么不能一起用？
+### 5.1 Clash Verge 添加两个订阅后为什么不能一起使用？
 
-因为它们是两个 Profile，不是同一个配置里的两个节点来源。
+因为两个订阅通常是两个独立 Profile，不是同一个配置里的两个 provider。需要使用 `proxy-providers` 将订阅来源放进同一个配置。
 
-### 7.2 为什么发达地区自动组为空？
+### 5.2 Shadowrocket 多订阅代理组为什么为空？
 
-通常是节点名称没有包含国家 / 地区关键词，或者订阅没有被 provider 成功拉取。
-
-检查：
+常见原因包括：
 
 ```text
-订阅链接是否有效
-provider 是否刷新成功
-节点名称是否包含日本 / 美国 / 新加坡 / 台湾 / 德国等关键词
+订阅名称与配置中显示名称不一致
+订阅未启用
+policy-regex-filter 没有匹配到节点
+节点名称缺少地区关键词
 ```
 
-### 7.3 为什么出现通知节点？
+### 5.3 发达地区自动组为什么出现通知节点？
 
-有些机场会把“剩余流量”“套餐到期”“客户端更新提示”伪装成节点。本模板使用 `exclude-filter` 尽量排除这类节点。
-
-### 7.4 为什么 CC 云 / AnyTLS 节点在 Clash Verge 里 Timeout？
-
-优先检查本地进程拦截、防火墙、系统代理、杀毒软件、Clash Verge 内核版本和 Mihomo 版本。确认原订阅在 Clash Verge 中可用后，再进行合并。
-
----
-
-## 8. 文件安全建议
-
-可以提交到 GitHub：
+机场订阅可能将套餐、流量、到期时间、客户端提示等信息写成节点。应在排除条件中加入：
 
 ```text
-模板文件
-正则表达式
-全局扩展脚本
-说明文档
+剩余、流量、套餐、到期、重置、官网、通知、客户端、更新、备用域名、旧节点
 ```
 
-不要提交到 GitHub：
+### 5.4 合并后节点可用性由什么决定？
 
-```text
-真实订阅链接
-完整机场配置
-节点密码
-token
-包含账号信息的 YAML / CONF 文件
-```
+合并模板只负责组织节点和筛选节点。实际连接质量取决于订阅内容、节点协议、客户端内核、本地网络环境和系统代理状态。
