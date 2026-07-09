@@ -1,237 +1,209 @@
-# Proxy Group Notes for Clash Verge & Shadowrocket
+# Proxy Group Notes for Clash Verge, Mihomo and Shadowrocket
 
-本仓库整理 Clash Verge / Mihomo / Shadowrocket 的代理组配置方法，重点解决 AI 服务分流、非港澳发达地区自动选择、美国专用代理组、双订阅合并、Shadowrocket `PROXY` 规则替换等问题。
+面向 Clash Verge / Mihomo / Shadowrocket 的代理组配置文档，整理代理组命名、规则指向、URL-Test 自动选择、多订阅合并、地区筛选正则和自定义代理组模板。
 
-> 注意：不要上传自己的机场订阅链接、节点密码、token、完整机场配置文件。本仓库只放规则片段、正则表达式、脚本模板和合并模板。
-
----
-
-## 1. 现状问题：为什么需要这套配置？
-
-### 1.1 AI 服务对地区敏感
-
-ChatGPT / OpenAI / Claude / Gemini 等 AI 服务对访问地区较敏感，部分地区节点可能导致：
-
-- 无法访问
-- 登录异常
-- 频繁验证
-- 服务不可用
-- 账号风控风险增加
-
-### 1.2 机场默认节点不一定适合 AI
-
-很多机场默认优先低延迟节点，例如香港节点，但 AI 服务并不一定适合走香港或澳门。低延迟不等于适合 AI 服务。
-
-### 1.3 机场默认分组不够精细
-
-机场订阅通常只提供：
-
-- 自动选择
-- 节点选择
-- 香港
-- 日本
-- 美国
-- 新加坡
-
-但不一定提供：
-
-- 非港澳发达地区自动组
-- 美国专用 URL-Test 组
-- AI 服务专用代理策略
-- 多订阅合并后的统一代理组
-
-### 1.4 两个订阅不等于自动合并
-
-在 Clash Verge 里添加两个订阅，通常只是添加了两个 Profile。实际使用时一般只启用其中一个完整配置。
-
-如果要把两个订阅的节点放进同一个代理组，需要使用 Mihomo 的 `proxy-providers`，把两个订阅作为节点来源合并到一个本地配置中。
-
-### 1.5 Shadowrocket 里“建了分组但没有生效”
-
-Shadowrocket 里常见问题是：分组已经建好，但规则没有指向这个分组。
-
-例如：
-
-```ini
-[Proxy Group]
-发达国家自动 = url-test,...
-
-[Rule]
-FINAL,PROXY
-```
-
-这表示实际流量仍然走 `PROXY`，而不是走 `发达国家自动`。
-
-所以 Shadowrocket 的关键是：
+本项目提供三类地区策略：
 
 ```text
-规则里的策略名
-必须和
-[Proxy Group] 里的代理组名
-完全一致
+全部发达地区
+美国自动
+自定义模板
 ```
+
+其中“全部发达地区”是默认推荐策略，用于筛选适合 AI 服务、Google 服务、开发者工具和常见国际服务的稳定地区节点。
 
 ---
 
-## 2. 核心逻辑：规则、代理组、节点和订阅的关系
+## 1. 基础概念：规则、代理组与订阅来源
 
-### 2.1 PROXY 是什么？
+### 1.1 规则必须指向代理组
 
-`PROXY` 通常是配置文件里的代理策略组名字，不是固定功能。
+代理客户端不会自动选择界面中看起来最合适的代理组，而是按照规则中的策略名称执行。
 
 ```ini
-DOMAIN-SUFFIX,google.com,PROXY
 DOMAIN-SUFFIX,openai.com,PROXY
+DOMAIN-SUFFIX,google.com,PROXY
 FINAL,PROXY
 ```
 
-意思是：Google、OpenAI 和其他未匹配流量都交给 `PROXY` 这个代理组处理。
+上述规则表示相关流量都会交给名为 `PROXY` 的代理组处理。
 
-如果 `[Proxy Group]` 里写：
+核心原则：
+
+```text
+规则中的策略名称 = 代理组名称
+```
+
+### 1.2 PROXY、DIRECT、FINAL、MATCH
+
+`PROXY` 通常是代理组名称，不是固定功能。
+
+```ini
+PROXY = select,...
+```
+
+表示手动选择代理。
 
 ```ini
 PROXY = url-test,...
 ```
 
-那么所有走 `PROXY` 的流量都会交给这个 URL-Test 代理组。
+表示自动测速代理组。
 
-### 2.2 DIRECT 是什么？
-
-`DIRECT` 表示直连，不走代理。
+`DIRECT` 表示直连。
 
 ```ini
 GEOIP,CN,DIRECT
 ```
 
-### 2.3 FINAL / MATCH 是什么？
-
-`FINAL` 是 Shadowrocket 常用的兜底规则。
+Shadowrocket 常用兜底规则：
 
 ```ini
 FINAL,PROXY
 ```
 
-Mihomo / Clash Verge 里通常写作：
+Clash / Mihomo 常用兜底规则：
 
 ```yaml
 - MATCH,节点选择
 ```
 
-意思是：前面所有规则都没匹配到时，最后统一走指定代理组。
+### 1.3 select、url-test、load-balance
 
-### 2.4 URL-Test 与 Load-Balance 区别
-
-#### URL-Test
-
-自动测速，并选择延迟较低的节点。适合 ChatGPT、Claude、Google、YouTube、Telegram 和日常网页浏览。
-
-#### Load-Balance
-
-把请求分配到多个节点。适合下载、多连接场景，但不太适合登录类网站、AI 服务、Google、银行、购物、社交账号，因为可能导致同一网站看到多个 IP，触发风控。
-
-### 2.5 proxy-providers 是什么？
-
-`proxy-providers` 是 Mihomo / Clash.Meta 用来远程拉取节点来源的方式。它可以把多个订阅作为多个 provider，然后让同一个代理组同时引用它们。
-
-```yaml
-proxy-providers:
-  sub_a:
-    type: http
-    url: "SUBSCRIPTION_URL_A"
-
-  sub_b:
-    type: http
-    url: "SUBSCRIPTION_URL_B"
-
-proxy-groups:
-  - name: 🌐 发达地区自动
-    type: url-test
-    use:
-      - sub_a
-      - sub_b
+```text
+select       手动选择节点或代理组
+url-test     自动测速并选择延迟较低的节点
+load-balance 多节点负载均衡
 ```
+
+`url-test` 更适合 AI 服务、Google、Telegram、YouTube、日常网页等场景。
+
+`load-balance` 不适合登录类、AI、银行、购物、社交账号等容易触发风控的场景。
+
+### 1.4 订阅、节点、代理组的关系
+
+```text
+订阅提供节点
+代理组组织节点
+规则决定流量走哪个代理组
+```
+
+在 Clash Verge / Mihomo 中，多订阅合并通常通过 `proxy-providers` 完成。
+
+在 Shadowrocket 中，多订阅合并通常通过同一代理组引用多个订阅名称，或通过 Sub-Store / 订阅转换工具生成合并订阅。
 
 ---
 
-## 3. 国家 / 地区策略：非港澳发达地区与欧盟节点
+## 2. 地区策略
 
-本仓库的地区策略不是政治表述，只是为了在代理客户端里按节点名称做筛选。目标是：
+### 2.1 全部发达地区
 
-```text
-优先选择非港澳发达国家 / 地区节点
-覆盖全部欧盟成员国
-排除香港、澳门、通知节点、套餐节点和部分非目标地区节点
-```
+默认推荐策略。
 
-### 3.1 推荐纳入的非港澳发达国家 / 地区
+覆盖：
 
 ```text
 台湾、新加坡、日本、韩国、美国、加拿大、英国、澳大利亚、新西兰、以色列、瑞士、挪威、冰岛、列支敦士登、安道尔、摩纳哥、圣马力诺、梵蒂冈
 ```
 
-这些节点通常更适合 AI 服务、账号登录、Google 服务和需要较低风控的场景。
-
-### 3.2 推荐纳入的欧盟国家
-
-最新版正则已经覆盖全部欧盟成员国：
+同时覆盖全部欧盟成员国：
 
 ```text
 奥地利、比利时、保加利亚、克罗地亚、塞浦路斯、捷克、丹麦、爱沙尼亚、芬兰、法国、德国、希腊、匈牙利、爱尔兰、意大利、拉脱维亚、立陶宛、卢森堡、马耳他、荷兰、波兰、葡萄牙、罗马尼亚、斯洛伐克、斯洛文尼亚、西班牙、瑞典
 ```
 
-### 3.3 尽量排除的地区和节点类型
+默认排除：
 
 ```text
-中国大陆、香港、澳门、俄罗斯、白俄罗斯、乌克兰、土耳其、阿联酋、尼日利亚、菲律宾、泰国、越南、印度、印尼、马来西亚、巴西、阿根廷、南非等
+香港、澳门、俄罗斯、白俄罗斯、乌克兰、土耳其、阿联酋、尼日利亚、菲律宾、泰国、越南、印度、印尼、马来西亚、巴西、阿根廷、南非
 ```
 
-同时排除这类非真实节点：
+同时排除机场信息节点：
 
 ```text
-剩余流量、套餐到期、流量重置、官网通知、客户端更新提示、备用域名、旧节点提示、帮助中心等
+剩余流量、套餐到期、流量重置、官网通知、客户端更新、备用域名、旧节点提示、帮助中心
 ```
 
-### 3.4 本仓库采用的主要策略
+### 2.2 美国自动
 
-本仓库提供三套主要策略：
+用于只希望使用美国节点的场景。
 
-- Clash Verge / Mihomo：全局扩展脚本自动生成 `🌐 发达地区自动`
-- Clash Verge / Mihomo：双订阅 `proxy-providers` 合并模板
-- Shadowrocket：非港澳发达国家 / 地区 + 欧盟国家正则与 `PROXY` 替换片段
-
-最新版 Shadowrocket 正则位置：
+覆盖：
 
 ```text
-configs/shadowrocket-developed-region-regex.txt
+美国、美國、美西、美东、美東、美中、美南、US、USA、United States、America、Los Angeles、San Jose、Seattle、New York、Dallas、Chicago、Washington
 ```
 
-实际支持地区仍以 OpenAI、Anthropic、Google 等服务官方支持列表为准。
+适用场景：
+
+```text
+AI 服务
+美国区账号
+美国区流媒体
+美国搜索 / 开发者服务
+固定美国出口需求
+```
+
+### 2.3 自定义模板
+
+自定义模板用于按实际节点命名建立地区代理组，例如：
+
+```text
+日本自动
+新加坡自动
+日韩自动
+美日新自动
+欧洲自动
+家宽自动
+IEPL 自动
+低倍率自动
+```
+
+基本结构分为两部分：
+
+```text
+include：需要纳入的关键词
+exclude：需要排除的关键词
+```
+
+Clash / Mihomo 中对应：
+
+```yaml
+filter: '...'
+exclude-filter: '...'
+```
+
+Shadowrocket 中对应：
+
+```ini
+policy-regex-filter=...
+```
 
 ---
 
-## 4. 平台一：Clash Verge / Mihomo 单订阅解决方案
+## 3. Clash Verge / Mihomo
 
-### 4.1 适用场景
+### 3.1 设置“全部发达地区”自动代理组
 
-适用于电脑端 Clash Verge Rev / Mihomo / Clash.Meta。
+#### 方式 A：全局扩展脚本
 
-### 4.2 解决思路
-
-通过 Clash Verge 的全局扩展脚本，在配置加载时自动生成一个可复用的 URL-Test 代理组：
-
-- 自动读取当前订阅节点
-- 新增 `🌐 发达地区自动` URL-Test 组
-- 使用正则筛选台湾、新加坡、日本、韩国、美国、加拿大、英国、澳洲、新西兰、欧盟国家、瑞士、挪威、冰岛等节点
-- 排除香港、澳门和订阅信息节点
-- 自动插入主选择组，方便在代理页面直接选择
-
-### 4.3 代码位置
+文件位置：
 
 ```text
 scripts/clash-verge-developed.js
 ```
 
-### 4.4 使用方法
+作用：
+
+```text
+读取当前配置节点
+创建 🌐 发达地区自动
+筛选全部发达地区节点
+排除香港、澳门、通知节点和非目标地区
+插入主选择组
+```
+
+使用方式：
 
 ```text
 Clash Verge Rev
@@ -242,45 +214,95 @@ Clash Verge Rev
 → 刷新订阅
 ```
 
-### 4.5 结果验证
-
-代理页面应出现：
+生成代理组：
 
 ```text
 🌐 发达地区自动
 ```
 
-进入该代理组后，应主要看到非港澳发达地区和欧盟国家节点，不应出现香港、澳门或订阅信息节点。
+#### 方式 B：YAML 中直接写代理组
 
----
+适合本地配置、完整合并配置和固定模板。
 
-## 5. 平台二：Clash Verge / Mihomo 双订阅合并方案
-
-### 5.1 适用场景
-
-适用于想把两个机场订阅的节点放到同一个配置中使用的情况，例如：
-
-```text
-订阅 A + 订阅 B
-→ 一个本地合并配置
-→ 一个统一的 节点选择 / 发达地区自动 / 美国自动
+```yaml
+proxy-groups:
+  - name: 🌐 发达地区自动
+    type: url-test
+    use:
+      - sub_a
+      - sub_b
+    filter: '全部发达地区 include 正则'
+    exclude-filter: '排除地区与信息节点正则'
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
 ```
 
-### 5.2 代码位置
+### 3.2 设置“美国自动”代理组
 
-合并模板：
+Clash / Mihomo 示例：
+
+```yaml
+- name: 🇺🇸 美国自动
+  type: url-test
+  use:
+    - sub_a
+    - sub_b
+  filter: '(?i)(美国|美國|美西|美东|美東|美中|美南|\bus\b|\busa\b|united states|america|los angeles|san jose|seattle|new york|dallas|chicago|washington|🇺🇸)'
+  exclude-filter: '(?i)(香港|澳门|澳門|剩余|流量|套餐|到期|重置|官网|通知|客户端|更新)'
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  tolerance: 50
+  lazy: true
+```
+
+### 3.3 设置“自定义模板”代理组
+
+文件位置：
+
+```text
+configs/clash-verge-custom-template.yaml
+```
+
+示例：日本自动。
+
+```yaml
+- name: 日本自动
+  type: url-test
+  use:
+    - sub_a
+    - sub_b
+  filter: '(?i)(日本|东京|東京|大阪|\bjp\b|japan|tokyo|osaka|🇯🇵)'
+  exclude-filter: '(?i)(香港|澳门|澳門|剩余|流量|套餐|到期|重置|官网|通知)'
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  tolerance: 50
+  lazy: true
+```
+
+### 3.4 Clash Verge / Mihomo 多订阅合并
+
+#### 3.4.1 问题说明
+
+在 Clash Verge 中添加两个订阅，通常只是两个独立 Profile。
+
+```text
+订阅 A
+订阅 B
+```
+
+这不等于两个订阅的节点自动进入同一个代理组。
+
+#### 3.4.2 推荐方式：proxy-providers
+
+文件位置：
 
 ```text
 configs/clash-verge-merge-template.yaml
 ```
 
-详细教程：
-
-```text
-docs/MERGE_SUBSCRIPTIONS.md
-```
-
-### 5.3 核心代码
+核心结构：
 
 ```yaml
 proxy-providers:
@@ -300,224 +322,210 @@ proxy-groups:
       - sub_b
 ```
 
-### 5.4 使用方法
+其中：
+
+```yaml
+use:
+  - sub_a
+  - sub_b
+```
+
+表示同一个代理组同时使用两个订阅来源。
+
+### 3.5 YAML 合并 + 全局扩展脚本
+
+更通用的 Clash Verge / Mihomo 架构是：
 
 ```text
-1. 复制 configs/clash-verge-merge-template.yaml 到本地
-2. 把 SUBSCRIPTION_URL_A / SUBSCRIPTION_URL_B 换成自己的两个订阅链接
-3. 不要把替换后的真实文件上传 GitHub
-4. Clash Verge Rev → 订阅 → 新建 → 本地配置 / Local File
-5. 导入本地 YAML，刷新并测试延迟
+YAML 负责合并订阅来源
+全局扩展脚本负责生成地区代理组
 ```
 
-### 5.5 合并后会生成的代理组
+也就是：
+
+```yaml
+proxy-providers:
+  sub_a:
+    type: http
+    url: "SUBSCRIPTION_URL_A"
+
+  sub_b:
+    type: http
+    url: "SUBSCRIPTION_URL_B"
+```
+
+然后通过：
 
 ```text
-节点选择
-🌐 发达地区自动
-🇺🇸 美国自动
-♻️ 全部自动
-```
-
-其中 `🌐 发达地区自动` 会同时从两个订阅中筛选非港澳发达国家 / 地区和欧盟国家节点。
-
----
-
-## 6. 平台三：Shadowrocket 解决方案
-
-### 6.1 Shadowrocket 的问题本质
-
-Shadowrocket 不是只靠 UI 分组生效，而是要看配置文件里的：
-
-```ini
-[Proxy Group]
-PROXY = ...
-
-[Rule]
-FINAL,PROXY
-```
-
-规则里的名字必须和代理组名字一致。
-
-如果规则里大量使用：
-
-```ini
-PROXY
-```
-
-那么最稳的方式不是另建一个没人引用的新分组，而是直接把 `PROXY` 这个代理组改成你想要的 URL-Test 筛选逻辑。
-
-### 6.2 推荐使用模式
-
-```text
-全局路由：配置
-```
-
-不要长期使用：
-
-```text
-全局路由：代理
-```
-
-因为“代理”模式会直接使用首页当前节点，容易绕开配置文件里的规则。
-
-### 6.3 非港澳发达地区自动 PROXY
-
-代码位置：
-
-```text
-configs/shadowrocket-developed.conf
-configs/shadowrocket-developed-region-regex.txt
-```
-
-用途：
-
-让所有原本走 `PROXY` 的流量，只在非港澳发达国家 / 地区和欧盟国家节点里自动选择。
-
-### 6.4 美国专用 PROXY
-
-代码位置：
-
-```text
-configs/shadowrocket-us.conf
-```
-
-用途：
-
-让所有原本走 `PROXY` 的流量，只在美国节点里自动选择。
-
-### 6.5 替换方法
-
-找到 Shadowrocket 配置中的：
-
-```ini
-[Proxy Group]
-PROXY = ...
-```
-
-把整行替换成对应配置片段。
-
-同时确认规则最后是：
-
-```ini
-FINAL,PROXY
-```
-
-### 6.6 订阅名替换
-
-配置片段里使用：
-
-```ini
-<SUBSCRIPTION_NAME>
-```
-
-需要替换成当前配置里真实存在的订阅名，例如：
-
-```ini
-SakuraCat
-api.efanyunapi.com
-```
-
----
-
-## 7. 正则表达式说明
-
-### 7.1 最新完整发达地区正则
-
-代码位置：
-
-```text
-configs/shadowrocket-developed-region-regex.txt
 scripts/clash-verge-developed.js
-configs/clash-verge-merge-template.yaml
 ```
 
-覆盖：
+自动生成：
 
-- 台湾
-- 新加坡
-- 日本
-- 韩国
-- 美国
-- 加拿大
-- 英国
-- 澳大利亚
-- 新西兰
-- 以色列
-- 瑞士
-- 挪威
-- 冰岛
-- 列支敦士登
-- 安道尔
-- 摩纳哥
-- 圣马力诺
-- 梵蒂冈
-- 全部欧盟成员国
+```text
+🌐 发达地区自动
+```
 
-排除：
+这种方式适合：
 
-- 香港
-- 澳门
-- 俄罗斯、白俄罗斯、乌克兰等非目标地区
-- 东南亚、南美、非洲等非目标地区节点
-- 剩余流量、套餐到期、流量重置等信息节点
-- 官网通知、客户端更新、备用域名、旧节点提示等通知节点
+```text
+经常更换订阅
+希望订阅来源和筛选策略分离
+希望用一份脚本统一管理地区代理组
+```
 
-### 7.2 Shadowrocket 配置片段
+---
 
-代码位置：
+## 4. Shadowrocket
+
+### 4.1 设置“全部发达地区”自动代理组
+
+文件位置：
 
 ```text
 configs/shadowrocket-developed.conf
+configs/shadowrocket-developed-region-regex.txt
 ```
 
-用途：
+核心写法：
 
-保存可直接放入 `[Proxy Group]` 的配置行。
+```ini
+PROXY = url-test,<SUBSCRIPTION_NAME>,use=true,url=http://www.gstatic.com/generate_204,policy-regex-filter=...
+```
 
-### 7.3 美国专用正则
+规则对应：
 
-代码位置：
+```ini
+FINAL,PROXY
+```
+
+如果规则中大量使用 `PROXY`，可直接将 `PROXY` 代理组设置为全部发达地区自动组。
+
+### 4.2 设置“美国自动”代理组
+
+文件位置：
 
 ```text
 configs/shadowrocket-us.conf
 ```
 
-筛选：
+核心写法：
 
-- 美国
-- 美西
-- 美东
-- US
-- USA
-- United States
-- Los Angeles
-- San Jose
-- New York
-- Dallas
-- Chicago
-- Washington
+```ini
+PROXY = url-test,<SUBSCRIPTION_NAME>,use=true,url=http://www.gstatic.com/generate_204,policy-regex-filter=...
+```
+
+筛选范围：
+
+```text
+美国、美國、美西、美东、美東、美中、美南、US、USA、United States、America、Los Angeles、San Jose、Seattle、New York、Dallas、Chicago、Washington
+```
+
+### 4.3 设置“自定义模板”代理组
+
+文件位置：
+
+```text
+configs/shadowrocket-custom-template.conf
+```
+
+Shadowrocket 自定义模板的核心是改 `policy-regex-filter`。
+
+示例：日本自动。
+
+```ini
+日本自动 = url-test,<SUBSCRIPTION_NAME>,use=true,url=http://www.gstatic.com/generate_204,policy-regex-filter=^(?!.*(香港|澳门|澳門|剩余|流量|套餐|到期|重置|官网|通知)).*(日本|东京|東京|大阪|JP|Japan|Tokyo|Osaka|🇯🇵),timeout=5,tolerance=100,interval=600
+```
+
+### 4.4 Shadowrocket 多订阅合并
+
+Shadowrocket 与 Clash / Mihomo 的合并逻辑不同。它没有 Clash Verge 的全局扩展脚本，也不使用 Mihomo 的 `proxy-providers`。
+
+Shadowrocket 多订阅通常有两种方式。
+
+#### 方式 A：同一个代理组引用多个订阅名称
+
+文件位置：
+
+```text
+configs/shadowrocket-multi-developed.conf
+```
+
+如果 Shadowrocket 中已经存在多个订阅来源，可以在一个代理组里同时引用多个订阅名。
+
+```ini
+PROXY = url-test,SakuraCat,api.efanyunapi.com,use=true,url=http://www.gstatic.com/generate_204,policy-regex-filter=...
+```
+
+这里的订阅名必须与 Shadowrocket 中显示的名称一致。
+
+适用场景：
+
+```text
+两个订阅都已经在 Shadowrocket 中可用
+希望一个 PROXY 组同时筛选两个订阅的节点
+```
+
+#### 方式 B：先合并订阅，再筛选
+
+可以通过 Sub-Store 或订阅转换工具先合并订阅。
+
+```text
+订阅 A
++
+订阅 B
+↓
+Sub-Store / 订阅转换
+↓
+合并订阅
+↓
+Shadowrocket 导入合并订阅
+↓
+PROXY = url-test,合并订阅名,use=true,policy-regex-filter=...
+```
+
+适用场景：
+
+```text
+需要跨客户端共用同一个合并订阅
+需要统一节点名称
+需要节点去重、加前缀、重命名
+```
 
 ---
 
-## 8. 目录结构
+## 5. 平台方案对比
+
+| 平台 | 目标 | 推荐方式 | 文件 |
+|---|---|---|---|
+| Clash Verge / Mihomo | 全部发达地区 | 全局扩展脚本或 YAML filter | `scripts/clash-verge-developed.js` |
+| Clash Verge / Mihomo | 美国自动 | YAML filter | `configs/clash-verge-merge-template.yaml` |
+| Clash Verge / Mihomo | 自定义模板 | YAML filter / exclude-filter | `configs/clash-verge-custom-template.yaml` |
+| Clash Verge / Mihomo | 多订阅合并 | proxy-providers | `configs/clash-verge-merge-template.yaml` |
+| Shadowrocket | 全部发达地区 | policy-regex-filter | `configs/shadowrocket-developed.conf` |
+| Shadowrocket | 美国自动 | policy-regex-filter | `configs/shadowrocket-us.conf` |
+| Shadowrocket | 自定义模板 | policy-regex-filter | `configs/shadowrocket-custom-template.conf` |
+| Shadowrocket | 多订阅合并 | 多订阅名引用 / Sub-Store | `configs/shadowrocket-multi-developed.conf` |
+
+---
+
+## 6. 文件结构
 
 ```text
 proxy-group-notes
-│
 ├── README.md
 ├── LICENSE
 ├── .gitignore
-│
 ├── scripts
 │   └── clash-verge-developed.js
-│
 ├── configs
 │   ├── clash-verge-merge-template.yaml
+│   ├── clash-verge-custom-template.yaml
 │   ├── shadowrocket-developed.conf
+│   ├── shadowrocket-multi-developed.conf
+│   ├── shadowrocket-custom-template.conf
 │   ├── shadowrocket-developed-region-regex.txt
 │   └── shadowrocket-us.conf
-│
 └── docs
     ├── MERGE_SUBSCRIPTIONS.md
     ├── SEO.md
@@ -526,179 +534,135 @@ proxy-group-notes
 
 ---
 
-## 9. 换订阅后的注意事项
+## 7. 推荐工作流
 
-### 9.1 Clash Verge 单订阅
+### 7.1 Clash Verge / Mihomo
 
-全局脚本开启时，换订阅通常仍然有效。
+单订阅：
 
-前提：
-
-- 节点名包含国家 / 地区关键词
-- 订阅能被 Clash Verge / Mihomo 正常识别
-- 全局扩展脚本没有关闭
-
-### 9.2 Clash Verge 双订阅合并
-
-如果使用 `configs/clash-verge-merge-template.yaml`，换订阅时只需要改：
-
-```yaml
-proxy-providers:
-  sub_a:
-    url: "新的第一个订阅链接"
-
-  sub_b:
-    url: "新的第二个订阅链接"
+```text
+导入订阅
+→ 启用全局扩展脚本
+→ 生成 🌐 发达地区自动
 ```
 
-不需要修改 `proxy-groups`，除非你要改筛选地区或代理组名称。
+多订阅：
 
-### 9.3 Shadowrocket
-
-Shadowrocket 是配置文件级别生效。
-
-换订阅后需要检查：
-
-```ini
-PROXY = url-test,...
-FINAL,PROXY
+```text
+proxy-providers 合并订阅
+→ 使用 YAML filter 或全局扩展脚本生成代理组
+→ 规则指向 节点选择 / 🌐 发达地区自动
 ```
 
-以及订阅名是否变化。
+### 7.2 Shadowrocket
 
-如果订阅名从：
+单订阅：
 
-```ini
-SakuraCat
+```text
+PROXY = url-test,订阅名,use=true,policy-regex-filter=...
+→ FINAL,PROXY
 ```
 
-变成：
+多订阅：
 
-```ini
-api.efanyunapi.com
+```text
+PROXY = url-test,订阅A,订阅B,use=true,policy-regex-filter=...
+→ FINAL,PROXY
 ```
 
-则需要把配置片段中的 `<SUBSCRIPTION_NAME>` 或旧订阅名替换成新的订阅名。
+或者：
+
+```text
+Sub-Store 合并订阅
+→ Shadowrocket 导入合并订阅
+→ PROXY = url-test,合并订阅名,use=true,policy-regex-filter=...
+```
 
 ---
 
-## 10. 常见问题
+## 8. 常见问题
 
-### 10.1 为什么 Shadowrocket 建了分组还是走香港？
+### 8.1 新建代理组为什么没有生效？
 
-因为规则可能仍然指向 `PROXY`，而不是你新建的分组。
+规则没有指向这个代理组。需要让规则中的策略名称与代理组名称一致。
 
-解决方式：直接把 `PROXY` 这个策略组改成目标 URL-Test 代理组。
+### 8.2 Clash Verge 中两个订阅为什么不能一起使用？
 
-### 10.2 为什么首页显示香港？
+因为它们通常是两个独立 Profile。需要使用 `proxy-providers` 把它们放进同一个配置。
 
-如果全局路由是“配置”，实际出口主要看配置规则；如果全局路由是“代理”，首页显示什么就走什么。
-
-推荐：
-
-```text
-全局路由：配置
-```
-
-### 10.3 为什么两个订阅添加到 Clash Verge 后没有一起用？
-
-因为两个订阅通常是两个 Profile，不是同一个配置里的两个节点来源。要一起用，需要 `proxy-providers` 合并模板。
-
-### 10.4 为什么发达地区自动组为空？
+### 8.3 Shadowrocket 多订阅代理组为什么为空？
 
 常见原因：
 
 ```text
-订阅链接没有拉取成功
-节点名称没有国家 / 地区关键词
-provider 名称和 use 里的名称不一致
-filter 正则过窄
+订阅名不一致
+订阅未启用
+policy-regex-filter 没有匹配节点
+节点名称不包含地区关键词
 ```
 
-### 10.5 Trojan / AnyTLS / UDP 是什么？
+### 8.4 发达地区自动组为什么出现通知节点？
 
-- Trojan / AnyTLS：节点使用的代理协议
-- UDP：节点支持 UDP 流量
-
-UDP 对游戏、语音通话、视频通话、部分 DNS 和 HTTP/3 有用。
-
-### 10.6 启动回退是什么？
-
-启动 Shadowrocket / 打开 VPN 时，如果当前节点不可用，自动回退到分组里其他可用节点。
-
-适合开启：
+需要在排除条件中加入：
 
 ```text
-URL-Test 自动组、节点多、节点经常 Timeout
+剩余、流量、套餐、到期、重置、官网、通知、客户端、更新、备用域名、旧节点
 ```
 
-不适合开启：
+### 8.5 自动组为什么频繁切换？
 
-```text
-想长期固定某一个节点、不希望自动切换地区
+提高 `tolerance`。
+
+Clash / Mihomo：
+
+```yaml
+tolerance: 100
+```
+
+Shadowrocket：
+
+```ini
+tolerance=100
 ```
 
 ---
 
-## 11. 推荐最终配置
+## 9. 参数参考
 
-### 11.1 电脑端：单订阅
+### interval
 
-```text
-Clash Verge Rev
-全局扩展脚本开启
-使用 🌐 发达地区自动
+测速间隔。
+
+```yaml
+interval: 300
 ```
 
-### 11.2 电脑端：双订阅合并
+### tolerance
 
-```text
-Clash Verge Rev
-使用 configs/clash-verge-merge-template.yaml
-把两个订阅作为 sub_a / sub_b
-使用 🌐 发达地区自动
+容差值。
+
+```yaml
+tolerance: 50
 ```
 
-### 11.3 手机端
+### lazy
 
-```text
-Shadowrocket
-全局路由：配置
-PROXY = url-test,...
-FINAL,PROXY
+懒加载测速。
+
+```yaml
+lazy: true
 ```
 
----
+### policy-regex-filter
 
-## 12. SEO 与关键词
+Shadowrocket 中用于按节点名称筛选代理节点。
 
-SEO 描述和关键词放在：
-
-```text
-docs/SEO.md
-docs/KEYWORDS.md
-```
-
-推荐 GitHub Topics：
-
-```text
-clash-verge
-mihomo
-clash-meta
-shadowrocket
-proxy-group
-url-test
-proxy-rules
-proxy-providers
-subscription-merge
-chatgpt-proxy
-openai-proxy
-ai-proxy
-regex-filter
+```ini
+policy-regex-filter=...
 ```
 
 ---
 
-## 13. 免责声明
+## 10. 免责声明
 
-本仓库仅用于个人网络配置学习与备忘，不包含任何机场订阅链接、节点密码或账号信息。实际访问效果取决于节点质量、服务支持地区、网络环境和客户端版本。
+本项目仅整理代理客户端配置方法、规则结构和正则表达式。实际连接质量取决于订阅内容、节点质量、客户端版本、本地网络环境和目标服务的访问策略。
