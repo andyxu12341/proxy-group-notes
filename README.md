@@ -283,36 +283,42 @@ configs/clash-verge-custom-template.yaml
 
 ### 3.4 Clash Verge / Mihomo 多订阅合并
 
-#### 3.4.1 问题说明
-
-在 Clash Verge 中添加两个订阅，通常只是两个独立 Profile。
+在 Clash Verge / Mihomo 中，多订阅合并主要有两种方式：
 
 ```text
-订阅 A
-订阅 B
+动态合并：通过 proxy-providers 拉取多个订阅
+静态合并：将多个订阅中的节点展开后写入同一个 YAML
 ```
 
-这不等于两个订阅的节点自动进入同一个代理组。
+两种方式都可以实现“多个订阅节点进入同一个代理组”，但适用场景不同。
 
-#### 3.4.2 推荐方式：proxy-providers
+#### 3.4.1 动态合并：proxy-providers
 
-文件位置：
+动态合并是 Mihomo / Clash.Meta 更推荐的长期维护方式。
 
-```text
-configs/clash-verge-merge-template.yaml
-```
-
-核心结构：
+核心逻辑是：订阅链接不直接展开为固定节点，而是作为远程 provider 保留。代理组通过 `use` 同时引用多个 provider。
 
 ```yaml
 proxy-providers:
   sub_a:
     type: http
     url: "SUBSCRIPTION_URL_A"
+    path: ./providers/sub_a.yaml
+    interval: 86400
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
 
   sub_b:
     type: http
     url: "SUBSCRIPTION_URL_B"
+    path: ./providers/sub_b.yaml
+    interval: 86400
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
 
 proxy-groups:
   - name: 🌐 发达地区自动
@@ -320,6 +326,12 @@ proxy-groups:
     use:
       - sub_a
       - sub_b
+    filter: '全部发达地区 include 正则'
+    exclude-filter: '排除地区与信息节点正则'
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
 ```
 
 其中：
@@ -330,18 +342,134 @@ use:
   - sub_b
 ```
 
-表示同一个代理组同时使用两个订阅来源。
+表示该代理组同时使用两个订阅来源中的节点。
 
-### 3.5 YAML 合并 + 全局扩展脚本
-
-更通用的 Clash Verge / Mihomo 架构是：
+动态合并的特点：
 
 ```text
-YAML 负责合并订阅来源
+优点：订阅更新后节点会自动更新
+优点：适合长期使用和多订阅维护
+优点：配置结构清晰，订阅来源与代理组策略分离
+缺点：依赖订阅链接可用性
+缺点：依赖 Mihomo 对订阅格式和节点协议的兼容性
+```
+
+适用场景：
+
+```text
+长期同时使用多个订阅
+希望节点自动跟随订阅更新
+希望用统一代理组管理多个订阅来源
+希望减少手动重新合并 YAML 的次数
+```
+
+相关文件：
+
+```text
+configs/clash-verge-merge-template.yaml
+```
+
+#### 3.4.2 静态合并：展开节点后写入同一个 YAML
+
+静态合并是将多个订阅中的节点直接展开，合并到同一个配置文件的 `proxies` 中，再手动生成统一的 `proxy-groups` 和 `rules`。
+
+结构通常如下：
+
+```yaml
+proxies:
+  - name: "sub_a-日本01"
+    type: ...
+    server: ...
+    port: ...
+
+  - name: "sub_b-美国01"
+    type: ...
+    server: ...
+    port: ...
+
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies:
+      - 🌐 发达地区自动
+      - 🇺🇸 美国自动
+      - ♻️ 全部自动
+      - DIRECT
+
+  - name: 🌐 发达地区自动
+    type: url-test
+    proxies:
+      - "sub_a-日本01"
+      - "sub_b-美国01"
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+
+rules:
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择
+```
+
+静态合并的特点：
+
+```text
+优点：导入即用，结构直观
+优点：不依赖 provider 再次拉取
+优点：适合订阅格式不稳定、需要手动清理节点的情况
+缺点：节点更新后不会自动同步
+缺点：订阅新增、删除、改名后需要重新合并
+缺点：完整 YAML 会包含节点连接参数，不适合作为公开模板
+```
+
+适用场景：
+
+```text
+需要一次性生成稳定可用的本地配置
+需要手动去除通知节点、套餐节点或异常节点
+需要对节点统一加前缀、重命名、去重
+订阅 provider 拉取不稳定，但展开后的节点可以正常使用
+```
+
+#### 3.4.3 两种合并方式对比
+
+| 合并方式 | 核心机制 | 是否自动更新节点 | 适合场景 |
+|---|---|---|---|
+| 动态合并 | `proxy-providers` + `use` | 是 | 长期使用、多订阅维护 |
+| 静态合并 | 展开 `proxies` 后写入同一 YAML | 否 | 一次性稳定配置、手动清理节点 |
+
+推荐优先级：
+
+```text
+长期维护：优先使用动态合并
+临时稳定使用：可以使用静态合并
+需要手动清洗节点：静态合并更直观
+需要自动更新节点：动态合并更合适
+```
+
+#### 3.4.4 与全局扩展脚本的关系
+
+多订阅合并和全局扩展脚本是两个不同层级的问题。
+
+```text
+多订阅合并：解决节点来源问题
+全局扩展脚本：解决代理组生成和筛选问题
+```
+
+因此，Clash Verge / Mihomo 可以采用两种组合方式：
+
+```text
+方式一：proxy-providers 动态合并 + YAML 中直接写 proxy-groups
+方式二：proxy-providers 动态合并 + 全局扩展脚本自动生成代理组
+```
+
+更通用的结构是：
+
+```text
+YAML 负责定义订阅来源
 全局扩展脚本负责生成地区代理组
 ```
 
-也就是：
+例如：
 
 ```yaml
 proxy-providers:
@@ -354,7 +482,7 @@ proxy-providers:
     url: "SUBSCRIPTION_URL_B"
 ```
 
-然后通过：
+然后由：
 
 ```text
 scripts/clash-verge-developed.js
@@ -366,13 +494,7 @@ scripts/clash-verge-developed.js
 🌐 发达地区自动
 ```
 
-这种方式适合：
-
-```text
-经常更换订阅
-希望订阅来源和筛选策略分离
-希望用一份脚本统一管理地区代理组
-```
+这种方式适合希望“订阅来源”和“地区筛选策略”分离管理的配置体系。
 
 ---
 
@@ -501,7 +623,7 @@ PROXY = url-test,合并订阅名,use=true,policy-regex-filter=...
 | Clash Verge / Mihomo | 全部发达地区 | 全局扩展脚本或 YAML filter | `scripts/clash-verge-developed.js` |
 | Clash Verge / Mihomo | 美国自动 | YAML filter | `configs/clash-verge-merge-template.yaml` |
 | Clash Verge / Mihomo | 自定义模板 | YAML filter / exclude-filter | `configs/clash-verge-custom-template.yaml` |
-| Clash Verge / Mihomo | 多订阅合并 | proxy-providers | `configs/clash-verge-merge-template.yaml` |
+| Clash Verge / Mihomo | 多订阅合并 | proxy-providers / 静态完整合并 | `configs/clash-verge-merge-template.yaml` |
 | Shadowrocket | 全部发达地区 | policy-regex-filter | `configs/shadowrocket-developed.conf` |
 | Shadowrocket | 美国自动 | policy-regex-filter | `configs/shadowrocket-us.conf` |
 | Shadowrocket | 自定义模板 | policy-regex-filter | `configs/shadowrocket-custom-template.conf` |
