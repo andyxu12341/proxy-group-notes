@@ -110,7 +110,6 @@ function injectRules(config) {
   // 两个走向：国内与大厂中国区直连；其他常见海外服务与兜底流量走发达地区自动。
   config.rules = [
     "RULE-SET,cn,DIRECT",
-    "GEOSITE,category-ads-all,REJECT",
     "GEOSITE,private,DIRECT",
     "GEOSITE,onedrive,DIRECT",
     "GEOSITE,microsoft@cn,DIRECT",
