@@ -197,7 +197,7 @@ function main(config, profileName) {
     "台湾", "台灣", "\\btw\\b", "taiwan", "🇹🇼",
     "新加坡", "狮城", "獅城", "\\bsg\\b", "singapore", "🇸🇬",
     "日本", "东京", "東京", "大阪", "\\bjp\\b", "japan", "tokyo", "osaka", "🇯🇵",
-    "韩国", "韓國", "首尔", "首爾", "\\bkr\\b", "korea", "seoul", "🇰🇷",
+    "韓國", "首爾", "\\bkr\\b", "korea", "seoul", "🇰🇷",
     "美国", "美國", "\\bus\\b", "\\busa\\b", "united states", "america", "美西", "美东", "美東", "美中", "美南", "洛杉矶", "洛杉磯", "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸",
     "\\bca\\b", "canada", "🇨🇦",
     "英國", "\\buk\\b", "united kingdom", "britain", "london", "倫敦", "🇬🇧",
