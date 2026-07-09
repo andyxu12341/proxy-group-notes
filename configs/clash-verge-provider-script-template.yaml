@@ -1,0 +1,83 @@
+# Clash Verge / Mihomo：proxy-providers + 全局扩展脚本模板
+#
+# 用途：YAML 只维护订阅来源、主入口和规则；代理组由 scripts/clash-verge-developed.js 自动生成。
+#
+# 需要配合：
+# - scripts/clash-verge-developed.js
+#
+# 脚本会自动读取 proxy-providers 下的所有 provider 名称，并生成：
+# - 🌐 发达地区自动
+# - 🇺🇸 美国自动
+# - ♻️ 全部自动
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: false
+
+external-controller: 127.0.0.1:9090
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  nameserver:
+    - https://223.5.5.5/dns-query
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  proxy-server-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+proxy-providers:
+  sub_a:
+    type: http
+    url: "SUBSCRIPTION_URL_A"
+    path: ./providers/sub_a.yaml
+    interval: 86400
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+
+  sub_b:
+    type: http
+    url: "SUBSCRIPTION_URL_B"
+    path: ./providers/sub_b.yaml
+    interval: 86400
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies:
+      - 🌐 发达地区自动
+      - 🇺🇸 美国自动
+      - ♻️ 全部自动
+      - DIRECT
+
+rules:
+  - DOMAIN-SUFFIX,openai.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,chatgpt.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,oaistatic.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,oaiusercontent.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,anthropic.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,claude.ai,🌐 发达地区自动
+  - DOMAIN-SUFFIX,gemini.google.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,google.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,googleapis.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,gstatic.com,🌐 发达地区自动
+  - GEOIP,CN,DIRECT
+  - MATCH,节点选择
