@@ -118,6 +118,14 @@ function isManagedRule(rule) {
     "domain-suffix,anthropic.com,",
     "domain-suffix,claude.ai,",
     "domain-suffix,gemini.google.com,",
+    "domain-suffix,perplexity.ai,",
+    "domain-suffix,poe.com,",
+    "domain-suffix,notebooklm.google.com,",
+    "domain-suffix,aistudio.google.com,",
+    "domain-suffix,ai.google.dev,",
+    "domain-suffix,makersuite.google.com,",
+    "domain-suffix,generativelanguage.googleapis.com,",
+    "domain-suffix,openrouter.ai,",
     "rule-set,google,",
     "rule-set,youtube,",
     "rule-set,telegram,",
@@ -154,6 +162,14 @@ function injectRules(config) {
     "DOMAIN-SUFFIX,anthropic.com," + DEV_NAME,
     "DOMAIN-SUFFIX,claude.ai," + DEV_NAME,
     "DOMAIN-SUFFIX,gemini.google.com," + DEV_NAME,
+    "DOMAIN-SUFFIX,perplexity.ai," + DEV_NAME,
+    "DOMAIN-SUFFIX,poe.com," + DEV_NAME,
+    "DOMAIN-SUFFIX,notebooklm.google.com," + DEV_NAME,
+    "DOMAIN-SUFFIX,aistudio.google.com," + DEV_NAME,
+    "DOMAIN-SUFFIX,ai.google.dev," + DEV_NAME,
+    "DOMAIN-SUFFIX,makersuite.google.com," + DEV_NAME,
+    "DOMAIN-SUFFIX,generativelanguage.googleapis.com," + DEV_NAME,
+    "DOMAIN-SUFFIX,openrouter.ai," + DEV_NAME,
     "RULE-SET,google," + DEV_NAME,
     "RULE-SET,youtube," + DEV_NAME,
     "RULE-SET,telegram," + DEV_NAME,
@@ -177,22 +193,30 @@ function injectRules(config) {
 }
 
 function ensureEntryGroup(groups, groupNames) {
-  var injected = false;
+  var STANDARD_ENTRY_NAME = "节点选择";
+  var standardEntryExists = false;
   var entryNameRegex = /节点选择|代理|Proxy|PROXY|默认|GLOBAL|全局|选择/i;
 
   for (var i = 0; i < groups.length; i++) {
     var group = groups[i];
-    if (!group || group.type !== "select") continue;
-    if (!Array.isArray(group.proxies)) group.proxies = [];
-    if (entryNameRegex.test(group.name || "")) {
+    if (!group) continue;
+
+    if (group.name === STANDARD_ENTRY_NAME && group.type === "select") {
+      if (!Array.isArray(group.proxies)) group.proxies = [];
       group.proxies = uniqPrepend(group.proxies, groupNames);
-      injected = true;
+      standardEntryExists = true;
+      continue;
+    }
+
+    if (group.type === "select" && entryNameRegex.test(group.name || "")) {
+      if (!Array.isArray(group.proxies)) group.proxies = [];
+      group.proxies = uniqPrepend(group.proxies, groupNames);
     }
   }
 
-  if (!injected) {
+  if (!standardEntryExists) {
     groups = upsertGroup(groups, {
-      name: "节点选择",
+      name: STANDARD_ENTRY_NAME,
       type: "select",
       proxies: groupNames.concat(["DIRECT"])
     });
