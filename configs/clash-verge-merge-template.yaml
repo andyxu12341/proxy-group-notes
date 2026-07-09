@@ -6,7 +6,7 @@
 # 3. 不要把替换后的真实订阅链接上传 GitHub 或公开分享。
 # 4. 在 Clash Verge Rev 中以“本地配置 / Local File”方式导入。
 #
-# 策略：规则只有两个走向：DIRECT 和 🌐 发达地区自动。
+# 策略：规则只有两个走向：DIRECT 和 🌐 发达地区自动；🇺🇸 美国自动只作为手动选项。
 # 美国、日本、台湾、新加坡保留完整关键词；其他发达地区删除简体中文名称。
 
 mixed-port: 7890
@@ -75,6 +75,7 @@ proxy-groups:
       - sub_b
     proxies:
       - 🌐 发达地区自动
+      - 🇺🇸 美国自动
       - DIRECT
 
   - name: 🌐 发达地区自动
@@ -84,6 +85,19 @@ proxy-groups:
       - sub_b
     filter: '(?i)(台湾|台灣|\btw\b|taiwan|🇹🇼|新加坡|狮城|獅城|\bsg\b|singapore|🇸🇬|日本|东京|東京|大阪|\bjp\b|japan|tokyo|osaka|🇯🇵|韓國|首爾|\bkr\b|korea|seoul|🇰🇷|美国|美國|\bus\b|\busa\b|united states|america|美西|美东|美東|美中|美南|洛杉矶|洛杉磯|los angeles|san jose|seattle|new york|dallas|chicago|washington|🇺🇸|\bca\b|canada|🇨🇦|英國|\buk\b|united kingdom|britain|london|倫敦|🇬🇧|澳大利亞|\bau\b|australia|sydney|melbourne|墨爾本|🇦🇺|新西蘭|\bnz\b|new zealand|🇳🇿|\bil\b|israel|🇮🇱|\bch\b|switzerland|🇨🇭|\bno\b|norway|🇳🇴|冰島|\bis\b|iceland|🇮🇸|\bli\b|liechtenstein|🇱🇮|安道爾|\bad\b|andorra|🇦🇩|摩納哥|\bmc\b|monaco|🇲🇨|聖馬力諾|san marino|\bsm\b|🇸🇲|梵蒂岡|vatican|\bva\b|🇻🇦|奧地利|\bat\b|austria|🇦🇹|比利時|\bbe\b|belgium|🇧🇪|保加利亞|\bbg\b|bulgaria|🇧🇬|克羅地亞|\bhr\b|croatia|🇭🇷|\bcy\b|cyprus|🇨🇾|\bcz\b|czech|czechia|🇨🇿|丹麥|\bdk\b|denmark|🇩🇰|愛沙尼亞|\bee\b|estonia|🇪🇪|芬蘭|\bfi\b|finland|🇫🇮|法國|\bfr\b|france|paris|🇫🇷|德國|\bde\b|germany|frankfurt|法蘭克福|🇩🇪|希臘|\bgr\b|greece|🇬🇷|\bhu\b|hungary|🇭🇺|愛爾蘭|\bie\b|ireland|🇮🇪|義大利|\bit\b|italy|🇮🇹|拉脫維亞|\blv\b|latvia|🇱🇻|\blt\b|lithuania|🇱🇹|盧森堡|\blu\b|luxembourg|🇱🇺|馬耳他|\bmt\b|malta|🇲🇹|荷蘭|\bnl\b|netherlands|amsterdam|🇳🇱|波蘭|\bpl\b|poland|🇵🇱|\bpt\b|portugal|🇵🇹|羅馬尼亞|\bro\b|romania|🇷🇴|\bsk\b|slovakia|🇸🇰|斯洛文尼亞|\bsi\b|slovenia|🇸🇮|\bes\b|spain|🇪🇸|\bse\b|sweden|🇸🇪)'
     exclude-filter: '(?i)(香港|hong[ -]?kong|\bhk\b|\bhkg\b|🇭🇰|澳门|澳門|macau|\bmo\b|🇲🇴|俄罗斯|俄羅斯|russia|\bru\b|乌克兰|烏克蘭|ukraine|\bua\b|白俄罗斯|白俄羅斯|belarus|\bby\b|土耳其|turkey|\btr\b|阿联酋|阿聯酋|uae|\bae\b|尼日利亚|尼日利亞|nigeria|\bng\b|菲律宾|菲律賓|philippines|\bph\b|泰国|泰國|thailand|\bth\b|越南|vietnam|\bvn\b|印度尼西亚|印度尼西亞|印尼|indonesia|\bid\b|印度|india|\bin\b|马来西亚|馬來西亞|malaysia|\bmy\b|巴西|brazil|\bbr\b|阿根廷|argentina|\bar\b|南非|south africa|\bza\b|剩余流量|套餐到期|下次重置剩余|重置剩余|到期时间|流量重置|traffic|expire|expiration|subscription|subscribe|reset|plan|官网|官方|通知|重要|客户端|更新|升级|审核|补偿|备用域名|域名|旧节点|帮助中心|流量|套餐|到期|重置|剩余|windows|mac|android|ios-shadowrocket|无法享受|请尽快)'
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    lazy: true
+    expected-status: 204
+
+  - name: 🇺🇸 美国自动
+    type: url-test
+    use:
+      - sub_a
+      - sub_b
+    filter: '(?i)(美国|美國|美西|美东|美東|美中|美南|\bus\b|\busa\b|united states|america|洛杉矶|洛杉磯|los angeles|san jose|seattle|new york|dallas|chicago|washington|🇺🇸)'
+    exclude-filter: '(?i)(香港|hong[ -]?kong|\bhk\b|\bhkg\b|🇭🇰|澳门|澳門|macau|\bmo\b|🇲🇴|剩余|流量|套餐|到期|重置|官网|官方|通知|重要|客户端|更新|升级|审核|补偿|备用域名|域名|旧节点|帮助中心)'
     url: https://www.gstatic.com/generate_204
     interval: 300
     tolerance: 50
