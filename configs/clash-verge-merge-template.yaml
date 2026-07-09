@@ -6,7 +6,8 @@
 # 3. 不要把替换后的真实订阅链接上传 GitHub 或公开分享。
 # 4. 在 Clash Verge Rev 中以“本地配置 / Local File”方式导入。
 #
-# 策略：按 MetaCubeX 官方示例风格分流；美国、日本、台湾、新加坡保留完整关键词，其他发达地区删除简体中文名称。
+# 策略：规则只有两个走向：DIRECT 和 🌐 发达地区自动。
+# 美国、日本、台湾、新加坡保留完整关键词；其他发达地区删除简体中文名称。
 
 mixed-port: 7890
 allow-lan: false
@@ -74,7 +75,6 @@ proxy-groups:
       - sub_b
     proxies:
       - 🌐 发达地区自动
-      - 🇺🇸 美国自动
       - DIRECT
 
   - name: 🌐 发达地区自动
@@ -90,29 +90,15 @@ proxy-groups:
     lazy: true
     expected-status: 204
 
-  - name: 🇺🇸 美国自动
-    type: url-test
-    use:
-      - sub_a
-      - sub_b
-    filter: '(?i)(美国|美國|美西|美东|美東|美中|美南|\bus\b|\busa\b|united states|america|洛杉矶|洛杉磯|los angeles|san jose|seattle|new york|dallas|chicago|washington|🇺🇸)'
-    exclude-filter: '(?i)(香港|hong[ -]?kong|\bhk\b|\bhkg\b|🇭🇰|澳门|澳門|macau|\bmo\b|🇲🇴|剩余|流量|套餐|到期|重置|官网|官方|通知|重要|客户端|更新|升级|审核|补偿|备用域名|域名|旧节点|帮助中心)'
-    url: https://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-    lazy: true
-    expected-status: 204
-
 rules:
   - RULE-SET,cn,DIRECT
-  - GEOSITE,category-ads-all,REJECT
   - GEOSITE,private,DIRECT
   - GEOSITE,onedrive,DIRECT
   - GEOSITE,microsoft@cn,DIRECT
   - GEOSITE,apple-cn,DIRECT
   - GEOSITE,steam@cn,DIRECT
   - GEOSITE,category-games@cn,DIRECT
-  - GEOSITE,openai,🇺🇸 美国自动
+  - GEOSITE,openai,🌐 发达地区自动
   - GEOSITE,youtube,🌐 发达地区自动
   - GEOSITE,google,🌐 发达地区自动
   - GEOSITE,github,🌐 发达地区自动
@@ -120,10 +106,10 @@ rules:
   - GEOSITE,twitter,🌐 发达地区自动
   - GEOSITE,pixiv,🌐 发达地区自动
   - GEOSITE,biliintl,🌐 发达地区自动
-  - GEOSITE,category-scholar-!cn,节点选择
-  - GEOSITE,geolocation-!cn,节点选择
+  - GEOSITE,category-scholar-!cn,🌐 发达地区自动
+  - GEOSITE,geolocation-!cn,🌐 发达地区自动
   - GEOSITE,cn,DIRECT
   - GEOIP,private,DIRECT,no-resolve
   - GEOIP,telegram,🌐 发达地区自动
   - GEOIP,CN,DIRECT
-  - MATCH,节点选择
+  - MATCH,🌐 发达地区自动
