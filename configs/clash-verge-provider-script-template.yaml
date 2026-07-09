@@ -4,8 +4,8 @@
 #
 # 脚本会自动读取 proxy-providers 下的所有 provider 名称，并生成：
 # - proxy-groups：🌐 发达地区自动 / 🇺🇸 美国自动 / 节点选择
-# - rule-providers：MetaCubeX 动态规则集
-# - rules：AI、Google、YouTube、Telegram、GitHub、流媒体、国内直连、兜底规则
+# - rule-providers：仅保留 MetaCubeX 中国大陆域名规则集 cn
+# - rules：国内网站与国内 IP 直连，其他全部交给“节点选择”
 
 mixed-port: 7890
 allow-lan: false
