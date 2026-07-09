@@ -3,9 +3,9 @@
 # 用途：YAML 只维护订阅来源；代理组、rule-providers 和 rules 由 scripts/clash-verge-developed.js 自动注入。
 #
 # 脚本会自动读取 proxy-providers 下的所有 provider 名称，并生成：
-# - proxy-groups：🌐 发达地区自动 / 🇺🇸 美国自动 / 节点选择
+# - proxy-groups：🌐 发达地区自动 / 节点选择
 # - rule-providers：MetaCubeX 中国大陆域名规则集 cn
-# - rules：按 MetaCubeX 官方示例风格分流；国内与大厂中国区直连，常见海外服务代理，最后交给“节点选择”兜底
+# - rules：规则只有两个走向：DIRECT 和 🌐 发达地区自动
 #
 # 注意：公开仓库中不要写入真实订阅 URL、token 或节点密码。
 
