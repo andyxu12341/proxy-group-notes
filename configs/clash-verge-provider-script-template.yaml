@@ -3,7 +3,7 @@
 # 用途：YAML 只维护订阅来源；代理组、rule-providers 和 rules 由 scripts/clash-verge-developed.js 自动注入。
 #
 # 脚本会自动读取 proxy-providers 下的所有 provider 名称，并生成：
-# - proxy-groups：🌐 发达地区自动 / 🇺🇸 美国自动 / ♻️ 全部自动 / 节点选择
+# - proxy-groups：🌐 发达地区自动 / 🇺🇸 美国自动 / 节点选择
 # - rule-providers：MetaCubeX 动态规则集
 # - rules：AI、Google、YouTube、Telegram、GitHub、流媒体、国内直连、兜底规则
 
