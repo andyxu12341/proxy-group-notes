@@ -96,7 +96,7 @@ function createMrsRuleProvider(behavior, url, path) {
 function injectRuleProviders(config) {
   var geosite = "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/";
 
-  // 按 MetaCubeX 官方示例保留 cn rule-set；其他常见类别通过 GEOSITE/GEOIP 调用。
+  // 保留 MetaCubeX 中国大陆域名 rule-set；其他常见类别通过 GEOSITE/GEOIP 调用。
   config["rule-providers"] = {
     cn: createMrsRuleProvider("domain", geosite + "cn.mrs", "./rules/geosite-cn.mrs")
   };
@@ -107,7 +107,8 @@ function injectRuleProviders(config) {
 function injectRules(config) {
   var DEV_NAME = "🌐 发达地区自动";
 
-  // 两个走向：国内与大厂中国区直连；其他常见海外服务与兜底流量走发达地区自动。
+  // 规则只保留两个走向：需要直连的走 DIRECT，需要代理的统一走“🌐 发达地区自动”。
+  // “🇺🇸 美国自动”仅放在“节点选择”里供手动选择，不被 rules 自动调用。
   config.rules = [
     "RULE-SET,cn,DIRECT",
     "GEOSITE,private,DIRECT",
@@ -149,7 +150,6 @@ function ensureEntryGroup(groups, groupNames, providerNames) {
 
     if (!Array.isArray(group.proxies)) group.proxies = [];
     group.proxies = removeProxyByName(group.proxies, "♻️ 全部自动");
-    group.proxies = removeProxyByName(group.proxies, "🇺🇸 美国自动");
 
     if (group.name === STANDARD_ENTRY_NAME && group.type === "select") {
       group.proxies = uniqPrepend(group.proxies, groupNames);
@@ -239,6 +239,12 @@ function main(config, profileName) {
     "\\bse\\b", "sweden", "🇸🇪"
   ];
 
+  var usItems = [
+    "美国", "美國", "美西", "美东", "美東", "美中", "美南",
+    "\\bus\\b", "\\busa\\b", "united states", "america",
+    "洛杉矶", "洛杉磯", "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸"
+  ];
+
   var infoItems = [
     "剩余流量", "套餐到期", "下次重置剩余", "重置剩余", "到期时间", "流量重置",
     "traffic", "expire", "expiration", "subscription", "subscribe", "reset", "plan",
@@ -267,9 +273,9 @@ function main(config, profileName) {
   ];
 
   groups = removeGroupByName(groups, ALL_NAME);
-  groups = removeGroupByName(groups, US_NAME);
+  groups = upsertGroup(groups, createUrlTestGroup(US_NAME, makeRegex(usItems), makeRegex(infoItems), providerNames, 50));
   groups = upsertGroup(groups, createUrlTestGroup(DEV_NAME, makeRegex(developedItems), makeRegex(regionExcludeItems.concat(infoItems)), providerNames, 50));
-  groups = ensureEntryGroup(groups, [DEV_NAME], providerNames);
+  groups = ensureEntryGroup(groups, [DEV_NAME, US_NAME], providerNames);
 
   config["proxy-groups"] = groups;
   config = injectRuleProviders(config);
