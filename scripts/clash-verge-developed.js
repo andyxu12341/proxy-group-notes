@@ -96,8 +96,7 @@ function createMrsRuleProvider(behavior, url, path) {
 function injectRuleProviders(config) {
   var geosite = "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/";
 
-  // 极简规则集：只保留中国大陆域名集合。
-  // 国内网站直连；其他所有流量交给“节点选择”。
+  // 按 MetaCubeX 官方示例保留 cn rule-set；其他常见类别通过 GEOSITE/GEOIP 调用。
   config["rule-providers"] = {
     cn: createMrsRuleProvider("domain", geosite + "cn.mrs", "./rules/geosite-cn.mrs")
   };
@@ -107,11 +106,34 @@ function injectRuleProviders(config) {
 
 function injectRules(config) {
   var ENTRY_NAME = "节点选择";
+  var DEV_NAME = "🌐 发达地区自动";
+  var US_NAME = "🇺🇸 美国自动";
 
-  // 极简分流：国内直连，其他全部交给节点选择。
+  // 官方示例风格：国内与大厂中国区直连，常见海外服务代理，最后交给节点选择兜底。
   config.rules = [
     "RULE-SET,cn,DIRECT",
+    "GEOSITE,category-ads-all,REJECT",
+    "GEOSITE,private,DIRECT",
+    "GEOSITE,onedrive,DIRECT",
+    "GEOSITE,microsoft@cn,DIRECT",
+    "GEOSITE,apple-cn,DIRECT",
+    "GEOSITE,steam@cn,DIRECT",
+    "GEOSITE,category-games@cn,DIRECT",
+
+    "GEOSITE,openai," + US_NAME,
+    "GEOSITE,youtube," + DEV_NAME,
+    "GEOSITE,google," + DEV_NAME,
+    "GEOSITE,github," + DEV_NAME,
+    "GEOSITE,telegram," + DEV_NAME,
+    "GEOSITE,twitter," + DEV_NAME,
+    "GEOSITE,pixiv," + DEV_NAME,
+    "GEOSITE,biliintl," + DEV_NAME,
+    "GEOSITE,category-scholar-!cn," + ENTRY_NAME,
+    "GEOSITE,geolocation-!cn," + ENTRY_NAME,
+    "GEOSITE,cn,DIRECT",
+
     "GEOIP,private,DIRECT,no-resolve",
+    "GEOIP,telegram," + DEV_NAME,
     "GEOIP,CN,DIRECT",
     "MATCH," + ENTRY_NAME
   ];
@@ -169,58 +191,60 @@ function main(config, profileName) {
   var US_NAME = "🇺🇸 美国自动";
   var ALL_NAME = "♻️ 全部自动";
 
+  // 保留美国、日本、台湾、新加坡的完整中英关键词；
+  // 其他发达地区删除简体中文名称，降低 CC 小众地区假节点误入自动组的概率。
   var developedItems = [
     "台湾", "台灣", "\\btw\\b", "taiwan", "🇹🇼",
     "新加坡", "狮城", "獅城", "\\bsg\\b", "singapore", "🇸🇬",
     "日本", "东京", "東京", "大阪", "\\bjp\\b", "japan", "tokyo", "osaka", "🇯🇵",
     "韩国", "韓國", "首尔", "首爾", "\\bkr\\b", "korea", "seoul", "🇰🇷",
-    "美国", "美國", "\\bus\\b", "\\busa\\b", "united states", "america", "美西", "美东", "美東", "美中", "美南", "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸",
-    "加拿大", "\\bca\\b", "canada", "🇨🇦",
-    "英国", "英國", "\\buk\\b", "united kingdom", "britain", "london", "伦敦", "倫敦", "🇬🇧",
-    "澳大利亚", "澳大利亞", "澳洲", "\\bau\\b", "australia", "sydney", "melbourne", "悉尼", "墨尔本", "墨爾本", "🇦🇺",
-    "新西兰", "新西蘭", "\\bnz\\b", "new zealand", "🇳🇿",
-    "以色列", "\\bil\\b", "israel", "🇮🇱",
-    "瑞士", "\\bch\\b", "switzerland", "🇨🇭",
-    "挪威", "\\bno\\b", "norway", "🇳🇴",
-    "冰岛", "冰島", "\\bis\\b", "iceland", "🇮🇸",
-    "列支敦士登", "\\bli\\b", "liechtenstein", "🇱🇮",
-    "安道尔", "安道爾", "\\bad\\b", "andorra", "🇦🇩",
-    "摩纳哥", "摩納哥", "\\bmc\\b", "monaco", "🇲🇨",
-    "圣马力诺", "聖馬力諾", "san marino", "\\bsm\\b", "🇸🇲",
-    "梵蒂冈", "梵蒂岡", "vatican", "\\bva\\b", "🇻🇦",
-    "奥地利", "奧地利", "\\bat\\b", "austria", "🇦🇹",
-    "比利时", "比利時", "\\bbe\\b", "belgium", "🇧🇪",
-    "保加利亚", "保加利亞", "\\bbg\\b", "bulgaria", "🇧🇬",
-    "克罗地亚", "克羅地亞", "\\bhr\\b", "croatia", "🇭🇷",
-    "塞浦路斯", "\\bcy\\b", "cyprus", "🇨🇾",
-    "捷克", "\\bcz\\b", "czech", "czechia", "🇨🇿",
-    "丹麦", "丹麥", "\\bdk\\b", "denmark", "🇩🇰",
-    "爱沙尼亚", "愛沙尼亞", "\\bee\\b", "estonia", "🇪🇪",
-    "芬兰", "芬蘭", "\\bfi\\b", "finland", "🇫🇮",
-    "法国", "法國", "\\bfr\\b", "france", "paris", "巴黎", "🇫🇷",
-    "德国", "德國", "\\bde\\b", "germany", "frankfurt", "法兰克福", "法蘭克福", "🇩🇪",
-    "希腊", "希臘", "\\bgr\\b", "greece", "🇬🇷",
-    "匈牙利", "\\bhu\\b", "hungary", "🇭🇺",
-    "爱尔兰", "愛爾蘭", "\\bie\\b", "ireland", "🇮🇪",
-    "意大利", "義大利", "\\bit\\b", "italy", "🇮🇹",
-    "拉脱维亚", "拉脫維亞", "\\blv\\b", "latvia", "🇱🇻",
-    "立陶宛", "\\blt\\b", "lithuania", "🇱🇹",
-    "卢森堡", "盧森堡", "\\blu\\b", "luxembourg", "🇱🇺",
-    "马耳他", "馬耳他", "\\bmt\\b", "malta", "🇲🇹",
-    "荷兰", "荷蘭", "\\bnl\\b", "netherlands", "amsterdam", "阿姆斯特丹", "🇳🇱",
-    "波兰", "波蘭", "\\bpl\\b", "poland", "🇵🇱",
-    "葡萄牙", "\\bpt\\b", "portugal", "🇵🇹",
-    "罗马尼亚", "羅馬尼亞", "\\bro\\b", "romania", "🇷🇴",
-    "斯洛伐克", "\\bsk\\b", "slovakia", "🇸🇰",
-    "斯洛文尼亚", "斯洛文尼亞", "\\bsi\\b", "slovenia", "🇸🇮",
-    "西班牙", "\\bes\\b", "spain", "🇪🇸",
-    "瑞典", "\\bse\\b", "sweden", "🇸🇪"
+    "美国", "美國", "\\bus\\b", "\\busa\\b", "united states", "america", "美西", "美东", "美東", "美中", "美南", "洛杉矶", "洛杉磯", "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸",
+    "\\bca\\b", "canada", "🇨🇦",
+    "英國", "\\buk\\b", "united kingdom", "britain", "london", "倫敦", "🇬🇧",
+    "澳大利亞", "\\bau\\b", "australia", "sydney", "melbourne", "墨爾本", "🇦🇺",
+    "新西蘭", "\\bnz\\b", "new zealand", "🇳🇿",
+    "\\bil\\b", "israel", "🇮🇱",
+    "\\bch\\b", "switzerland", "🇨🇭",
+    "\\bno\\b", "norway", "🇳🇴",
+    "冰島", "\\bis\\b", "iceland", "🇮🇸",
+    "\\bli\\b", "liechtenstein", "🇱🇮",
+    "安道爾", "\\bad\\b", "andorra", "🇦🇩",
+    "摩納哥", "\\bmc\\b", "monaco", "🇲🇨",
+    "聖馬力諾", "san marino", "\\bsm\\b", "🇸🇲",
+    "梵蒂岡", "vatican", "\\bva\\b", "🇻🇦",
+    "奧地利", "\\bat\\b", "austria", "🇦🇹",
+    "比利時", "\\bbe\\b", "belgium", "🇧🇪",
+    "保加利亞", "\\bbg\\b", "bulgaria", "🇧🇬",
+    "克羅地亞", "\\bhr\\b", "croatia", "🇭🇷",
+    "\\bcy\\b", "cyprus", "🇨🇾",
+    "\\bcz\\b", "czech", "czechia", "🇨🇿",
+    "丹麥", "\\bdk\\b", "denmark", "🇩🇰",
+    "愛沙尼亞", "\\bee\\b", "estonia", "🇪🇪",
+    "芬蘭", "\\bfi\\b", "finland", "🇫🇮",
+    "法國", "\\bfr\\b", "france", "paris", "🇫🇷",
+    "德國", "\\bde\\b", "germany", "frankfurt", "法蘭克福", "🇩🇪",
+    "希臘", "\\bgr\\b", "greece", "🇬🇷",
+    "\\bhu\\b", "hungary", "🇭🇺",
+    "愛爾蘭", "\\bie\\b", "ireland", "🇮🇪",
+    "義大利", "\\bit\\b", "italy", "🇮🇹",
+    "拉脫維亞", "\\blv\\b", "latvia", "🇱🇻",
+    "\\blt\\b", "lithuania", "🇱🇹",
+    "盧森堡", "\\blu\\b", "luxembourg", "🇱🇺",
+    "馬耳他", "\\bmt\\b", "malta", "🇲🇹",
+    "荷蘭", "\\bnl\\b", "netherlands", "amsterdam", "🇳🇱",
+    "波蘭", "\\bpl\\b", "poland", "🇵🇱",
+    "\\bpt\\b", "portugal", "🇵🇹",
+    "羅馬尼亞", "\\bro\\b", "romania", "🇷🇴",
+    "\\bsk\\b", "slovakia", "🇸🇰",
+    "斯洛文尼亞", "\\bsi\\b", "slovenia", "🇸🇮",
+    "\\bes\\b", "spain", "🇪🇸",
+    "\\bse\\b", "sweden", "🇸🇪"
   ];
 
   var usItems = [
     "美国", "美國", "美西", "美东", "美東", "美中", "美南",
     "\\bus\\b", "\\busa\\b", "united states", "america",
-    "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸"
+    "洛杉矶", "洛杉磯", "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸"
   ];
 
   var infoItems = [
