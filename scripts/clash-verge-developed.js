@@ -25,6 +25,49 @@ function upsertGroup(groups, group) {
   return groups;
 }
 
+function getProviderNames(config) {
+  var providers = config && config["proxy-providers"];
+  var names = [];
+
+  if (!providers || typeof providers !== "object") return names;
+
+  for (var key in providers) {
+    if (Object.prototype.hasOwnProperty.call(providers, key)) {
+      names.push(key);
+    }
+  }
+
+  return names;
+}
+
+function attachSources(group, providerNames) {
+  if (providerNames && providerNames.length > 0) {
+    group.use = providerNames;
+  } else {
+    group["include-all"] = true;
+    group["include-all-proxies"] = true;
+  }
+
+  return group;
+}
+
+function createUrlTestGroup(name, filterRegex, excludeRegex, providerNames, tolerance) {
+  var group = {
+    name: name,
+    type: "url-test",
+    url: "https://www.gstatic.com/generate_204",
+    interval: 300,
+    tolerance: tolerance || 50,
+    lazy: true,
+    "expected-status": 204
+  };
+
+  if (filterRegex) group.filter = filterRegex;
+  if (excludeRegex) group["exclude-filter"] = excludeRegex;
+
+  return attachSources(group, providerNames);
+}
+
 function main(config, profileName) {
   if (!config) return config;
 
@@ -33,9 +76,13 @@ function main(config, profileName) {
   }
 
   var groups = config["proxy-groups"];
-  var DEV_NAME = "🌐 发达地区自动";
+  var providerNames = getProviderNames(config);
 
-  // 非港澳发达国家 / 地区 + 全部欧盟成员国。
+  var DEV_NAME = "🌐 发达地区自动";
+  var US_NAME = "🇺🇸 美国自动";
+  var ALL_NAME = "♻️ 全部自动";
+
+  // 全部发达地区：非港澳发达国家 / 地区 + 全部欧盟成员国。
   // 用于 Clash Verge / Mihomo 的 filter 字段。
   var developedRegex =
     "(?i)(" +
@@ -86,7 +133,43 @@ function main(config, profileName) {
     "|瑞典|\\bse\\b|sweden|🇸🇪" +
     ")";
 
-  var excludeRegex =
+  var usRegex =
+    "(?i)(" +
+    "美国|美國|美西|美东|美東|美中|美南" +
+    "|\\bus\\b|\\busa\\b|united states|america" +
+    "|los angeles|san jose|seattle|new york|dallas|chicago|washington|🇺🇸" +
+    ")";
+
+  var infoRegex =
+    "(?i)(" +
+    "剩余流量|套餐到期|下次重置剩余|重置剩余|到期时间|流量重置" +
+    "|traffic|expire|expiration|subscription|subscribe|reset|plan" +
+    "|官网|官方|通知|重要|客户端|更新|升级|审核|补偿|备用域名|域名|旧节点|帮助中心" +
+    "|流量|套餐|到期|重置|剩余|windows|mac|android|ios-shadowrocket|无法享受|请尽快" +
+    ")";
+
+  var regionExcludeRegex =
+    "(?i)(" +
+    "香港|hong[ -]?kong|\\bhk\\b|\\bhkg\\b|🇭🇰" +
+    "|澳门|澳門|macau|\\bmo\\b|🇲🇴" +
+    "|俄罗斯|俄羅斯|russia|\\bru\\b" +
+    "|乌克兰|烏克蘭|ukraine|\\bua\\b" +
+    "|白俄罗斯|白俄羅斯|belarus|\\bby\\b" +
+    "|土耳其|turkey|\\btr\\b" +
+    "|阿联酋|阿聯酋|uae|\\bae\\b" +
+    "|尼日利亚|尼日利亞|nigeria|\\bng\\b" +
+    "|菲律宾|菲律賓|philippines|\\bph\\b" +
+    "|泰国|泰國|thailand|\\bth\\b" +
+    "|越南|vietnam|\\bvn\\b" +
+    "|印度尼西亚|印度尼西亞|印尼|indonesia|\\bid\\b" +
+    "|印度|india|\\bin\\b" +
+    "|马来西亚|馬來西亞|malaysia|\\bmy\\b" +
+    "|巴西|brazil|\\bbr\\b" +
+    "|阿根廷|argentina|\\bar\\b" +
+    "|南非|south africa|\\bza\\b" +
+    ")";
+
+  var developedExcludeRegex =
     "(?i)(" +
     "香港|hong[ -]?kong|\\bhk\\b|\\bhkg\\b|🇭🇰" +
     "|澳门|澳門|macau|\\bmo\\b|🇲🇴" +
@@ -111,22 +194,13 @@ function main(config, profileName) {
     "|流量|套餐|到期|重置|剩余|windows|mac|android|ios-shadowrocket|无法享受|请尽快" +
     ")";
 
-  groups = upsertGroup(groups, {
-    name: DEV_NAME,
-    type: "url-test",
-    "include-all": true,
-    "include-all-proxies": true,
-    filter: developedRegex,
-    "exclude-filter": excludeRegex,
-    url: "https://www.gstatic.com/generate_204",
-    interval: 300,
-    tolerance: 50,
-    lazy: true,
-    "expected-status": 204
-  });
+  groups = upsertGroup(groups, createUrlTestGroup(ALL_NAME, null, infoRegex, providerNames, 50));
+  groups = upsertGroup(groups, createUrlTestGroup(US_NAME, usRegex, infoRegex, providerNames, 50));
+  groups = upsertGroup(groups, createUrlTestGroup(DEV_NAME, developedRegex, developedExcludeRegex, providerNames, 50));
 
   var injected = false;
   var entryNameRegex = /节点选择|代理|Proxy|PROXY|默认|GLOBAL|全局|选择/i;
+  var injectedGroups = [DEV_NAME, US_NAME, ALL_NAME];
 
   for (var i = 0; i < groups.length; i++) {
     var g = groups[i];
@@ -135,7 +209,7 @@ function main(config, profileName) {
     if (!Array.isArray(g.proxies)) g.proxies = [];
 
     if (entryNameRegex.test(g.name || "")) {
-      g.proxies = uniqPrepend(g.proxies, [DEV_NAME]);
+      g.proxies = uniqPrepend(g.proxies, injectedGroups);
       injected = true;
     }
   }
@@ -145,7 +219,7 @@ function main(config, profileName) {
       var g2 = groups[k];
       if (g2 && g2.type === "select") {
         if (!Array.isArray(g2.proxies)) g2.proxies = [];
-        g2.proxies = uniqPrepend(g2.proxies, [DEV_NAME]);
+        g2.proxies = uniqPrepend(g2.proxies, injectedGroups);
         break;
       }
     }
