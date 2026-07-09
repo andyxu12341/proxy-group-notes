@@ -105,11 +105,9 @@ function injectRuleProviders(config) {
 }
 
 function injectRules(config) {
-  var ENTRY_NAME = "节点选择";
   var DEV_NAME = "🌐 发达地区自动";
-  var US_NAME = "🇺🇸 美国自动";
 
-  // 官方示例风格：国内与大厂中国区直连，常见海外服务代理，最后交给节点选择兜底。
+  // 两个走向：国内与大厂中国区直连；其他常见海外服务与兜底流量走发达地区自动。
   config.rules = [
     "RULE-SET,cn,DIRECT",
     "GEOSITE,category-ads-all,REJECT",
@@ -120,7 +118,7 @@ function injectRules(config) {
     "GEOSITE,steam@cn,DIRECT",
     "GEOSITE,category-games@cn,DIRECT",
 
-    "GEOSITE,openai," + US_NAME,
+    "GEOSITE,openai," + DEV_NAME,
     "GEOSITE,youtube," + DEV_NAME,
     "GEOSITE,google," + DEV_NAME,
     "GEOSITE,github," + DEV_NAME,
@@ -128,14 +126,14 @@ function injectRules(config) {
     "GEOSITE,twitter," + DEV_NAME,
     "GEOSITE,pixiv," + DEV_NAME,
     "GEOSITE,biliintl," + DEV_NAME,
-    "GEOSITE,category-scholar-!cn," + ENTRY_NAME,
-    "GEOSITE,geolocation-!cn," + ENTRY_NAME,
+    "GEOSITE,category-scholar-!cn," + DEV_NAME,
+    "GEOSITE,geolocation-!cn," + DEV_NAME,
     "GEOSITE,cn,DIRECT",
 
     "GEOIP,private,DIRECT,no-resolve",
     "GEOIP,telegram," + DEV_NAME,
     "GEOIP,CN,DIRECT",
-    "MATCH," + ENTRY_NAME
+    "MATCH," + DEV_NAME
   ];
 
   return config;
@@ -152,6 +150,7 @@ function ensureEntryGroup(groups, groupNames, providerNames) {
 
     if (!Array.isArray(group.proxies)) group.proxies = [];
     group.proxies = removeProxyByName(group.proxies, "♻️ 全部自动");
+    group.proxies = removeProxyByName(group.proxies, "🇺🇸 美国自动");
 
     if (group.name === STANDARD_ENTRY_NAME && group.type === "select") {
       group.proxies = uniqPrepend(group.proxies, groupNames);
@@ -241,12 +240,6 @@ function main(config, profileName) {
     "\\bse\\b", "sweden", "🇸🇪"
   ];
 
-  var usItems = [
-    "美国", "美國", "美西", "美东", "美東", "美中", "美南",
-    "\\bus\\b", "\\busa\\b", "united states", "america",
-    "洛杉矶", "洛杉磯", "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸"
-  ];
-
   var infoItems = [
     "剩余流量", "套餐到期", "下次重置剩余", "重置剩余", "到期时间", "流量重置",
     "traffic", "expire", "expiration", "subscription", "subscribe", "reset", "plan",
@@ -275,9 +268,9 @@ function main(config, profileName) {
   ];
 
   groups = removeGroupByName(groups, ALL_NAME);
-  groups = upsertGroup(groups, createUrlTestGroup(US_NAME, makeRegex(usItems), makeRegex(infoItems), providerNames, 50));
+  groups = removeGroupByName(groups, US_NAME);
   groups = upsertGroup(groups, createUrlTestGroup(DEV_NAME, makeRegex(developedItems), makeRegex(regionExcludeItems.concat(infoItems)), providerNames, 50));
-  groups = ensureEntryGroup(groups, [DEV_NAME, US_NAME], providerNames);
+  groups = ensureEntryGroup(groups, [DEV_NAME], providerNames);
 
   config["proxy-groups"] = groups;
   config = injectRuleProviders(config);
