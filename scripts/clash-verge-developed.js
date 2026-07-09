@@ -42,6 +42,12 @@ function attachSources(group, providerNames) {
   return group;
 }
 
+function attachEntrySources(group, providerNames) {
+  // 让 select 主入口除了自动代理组外，也能展开显示 provider 中的单个节点。
+  // 有 proxy-providers 时使用 use；没有 provider 时回退 include-all。
+  return attachSources(group, providerNames);
+}
+
 function createUrlTestGroup(name, filterRegex, excludeRegex, providerNames, tolerance) {
   var group = {
     name: name,
@@ -192,7 +198,7 @@ function injectRules(config) {
   return config;
 }
 
-function ensureEntryGroup(groups, groupNames) {
+function ensureEntryGroup(groups, groupNames, providerNames) {
   var STANDARD_ENTRY_NAME = "节点选择";
   var standardEntryExists = false;
   var entryNameRegex = /节点选择|代理|Proxy|PROXY|默认|GLOBAL|全局|选择/i;
@@ -204,6 +210,8 @@ function ensureEntryGroup(groups, groupNames) {
     if (group.name === STANDARD_ENTRY_NAME && group.type === "select") {
       if (!Array.isArray(group.proxies)) group.proxies = [];
       group.proxies = uniqPrepend(group.proxies, groupNames);
+      group = attachEntrySources(group, providerNames);
+      groups[i] = group;
       standardEntryExists = true;
       continue;
     }
@@ -211,15 +219,18 @@ function ensureEntryGroup(groups, groupNames) {
     if (group.type === "select" && entryNameRegex.test(group.name || "")) {
       if (!Array.isArray(group.proxies)) group.proxies = [];
       group.proxies = uniqPrepend(group.proxies, groupNames);
+      group = attachEntrySources(group, providerNames);
+      groups[i] = group;
     }
   }
 
   if (!standardEntryExists) {
-    groups = upsertGroup(groups, {
+    var entryGroup = {
       name: STANDARD_ENTRY_NAME,
       type: "select",
       proxies: groupNames.concat(["DIRECT"])
-    });
+    };
+    groups = upsertGroup(groups, attachEntrySources(entryGroup, providerNames));
   }
 
   return groups;
@@ -320,7 +331,7 @@ function main(config, profileName) {
   groups = upsertGroup(groups, createUrlTestGroup(ALL_NAME, null, makeRegex(infoItems), providerNames, 50));
   groups = upsertGroup(groups, createUrlTestGroup(US_NAME, makeRegex(usItems), makeRegex(infoItems), providerNames, 50));
   groups = upsertGroup(groups, createUrlTestGroup(DEV_NAME, makeRegex(developedItems), makeRegex(regionExcludeItems.concat(infoItems)), providerNames, 50));
-  groups = ensureEntryGroup(groups, [DEV_NAME, US_NAME, ALL_NAME]);
+  groups = ensureEntryGroup(groups, [DEV_NAME, US_NAME, ALL_NAME], providerNames);
 
   config["proxy-groups"] = groups;
   config = injectRuleProviders(config);
