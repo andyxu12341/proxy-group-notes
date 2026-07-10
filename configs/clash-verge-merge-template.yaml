@@ -107,6 +107,7 @@ proxy-groups:
 rules:
   - DOMAIN-SUFFIX,homestyler.com,🌐 发达地区自动
   - DOMAIN-SUFFIX,homestyler.sjv.io,🌐 发达地区自动
+  - DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com,🌐 发达地区自动
   - RULE-SET,cn,DIRECT
   - GEOSITE,private,DIRECT
   - GEOSITE,onedrive,DIRECT
