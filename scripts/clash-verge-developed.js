@@ -113,6 +113,7 @@ function injectRules(config) {
     // Homestyler 被 cn 规则集收录，但这里优先指定走代理，避免被 RuleSet(cn) 截走。
     "DOMAIN-SUFFIX,homestyler.com," + DEV_NAME,
     "DOMAIN-SUFFIX,homestyler.sjv.io," + DEV_NAME,
+    "DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com," + DEV_NAME,
 
     "RULE-SET,cn,DIRECT",
     "GEOSITE,private,DIRECT",
