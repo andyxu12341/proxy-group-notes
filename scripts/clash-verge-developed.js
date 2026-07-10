@@ -110,6 +110,10 @@ function injectRules(config) {
   // 规则只保留两个走向：需要直连的走 DIRECT，需要代理的统一走“🌐 发达地区自动”。
   // “🇺🇸 美国自动”仅放在“节点选择”里供手动选择，不被 rules 自动调用。
   config.rules = [
+    // Homestyler 被 cn 规则集收录，但这里优先指定走代理，避免被 RuleSet(cn) 截走。
+    "DOMAIN-SUFFIX,homestyler.com," + DEV_NAME,
+    "DOMAIN-SUFFIX,homestyler.sjv.io," + DEV_NAME,
+
     "RULE-SET,cn,DIRECT",
     "GEOSITE,private,DIRECT",
     "GEOSITE,onedrive,DIRECT",
