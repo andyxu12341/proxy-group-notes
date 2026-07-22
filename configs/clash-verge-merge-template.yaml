@@ -6,7 +6,8 @@
 # 3. 不要把替换后的真实订阅链接上传 GitHub 或公开分享。
 # 4. 在 Clash Verge Rev 中以“本地配置 / Local File”方式导入。
 #
-# 策略：规则只有两个走向：DIRECT 和 🌐 发达地区自动；🇺🇸 美国自动只作为手动选项。
+# 策略：需要直连的流量走 DIRECT；所有需要代理的流量统一交给“节点选择”。
+# “节点选择”中可手动选择 🌐 发达地区自动、🇺🇸 美国自动、具体节点或 DIRECT。
 # 美国、日本、台湾、新加坡保留完整关键词；其他发达地区删除简体中文名称。
 
 mixed-port: 7890
@@ -105,9 +106,9 @@ proxy-groups:
     expected-status: 204
 
 rules:
-  - DOMAIN-SUFFIX,homestyler.com,🌐 发达地区自动
-  - DOMAIN-SUFFIX,homestyler.sjv.io,🌐 发达地区自动
-  - DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com,🌐 发达地区自动
+  - DOMAIN-SUFFIX,homestyler.com,节点选择
+  - DOMAIN-SUFFIX,homestyler.sjv.io,节点选择
+  - DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com,节点选择
   - RULE-SET,cn,DIRECT
   - GEOSITE,private,DIRECT
   - GEOSITE,onedrive,DIRECT
@@ -115,18 +116,18 @@ rules:
   - GEOSITE,apple-cn,DIRECT
   - GEOSITE,steam@cn,DIRECT
   - GEOSITE,category-games@cn,DIRECT
-  - GEOSITE,openai,🌐 发达地区自动
-  - GEOSITE,youtube,🌐 发达地区自动
-  - GEOSITE,google,🌐 发达地区自动
-  - GEOSITE,github,🌐 发达地区自动
-  - GEOSITE,telegram,🌐 发达地区自动
-  - GEOSITE,twitter,🌐 发达地区自动
-  - GEOSITE,pixiv,🌐 发达地区自动
-  - GEOSITE,biliintl,🌐 发达地区自动
-  - GEOSITE,category-scholar-!cn,🌐 发达地区自动
-  - GEOSITE,geolocation-!cn,🌐 发达地区自动
+  - GEOSITE,openai,节点选择
+  - GEOSITE,youtube,节点选择
+  - GEOSITE,google,节点选择
+  - GEOSITE,github,节点选择
+  - GEOSITE,telegram,节点选择
+  - GEOSITE,twitter,节点选择
+  - GEOSITE,pixiv,节点选择
+  - GEOSITE,biliintl,节点选择
+  - GEOSITE,category-scholar-!cn,节点选择
+  - GEOSITE,geolocation-!cn,节点选择
   - GEOSITE,cn,DIRECT
   - GEOIP,private,DIRECT,no-resolve
-  - GEOIP,telegram,🌐 发达地区自动
+  - GEOIP,telegram,节点选择
   - GEOIP,CN,DIRECT
-  - MATCH,🌐 发达地区自动
+  - MATCH,节点选择
