@@ -105,15 +105,15 @@ function injectRuleProviders(config) {
 }
 
 function injectRules(config) {
-  var DEV_NAME = "🌐 发达地区自动";
+  var ENTRY_NAME = "节点选择";
 
-  // 规则只保留两个走向：需要直连的走 DIRECT，需要代理的统一走“🌐 发达地区自动”。
-  // “🇺🇸 美国自动”仅放在“节点选择”里供手动选择，不被 rules 自动调用。
+  // 需要直连的流量走 DIRECT；所有需要代理的流量统一交给“节点选择”。
+  // 用户可在“节点选择”中手动选择“🌐 发达地区自动”“🇺🇸 美国自动”或具体节点。
   config.rules = [
-    // Homestyler 被 cn 规则集收录，但这里优先指定走代理，避免被 RuleSet(cn) 截走。
-    "DOMAIN-SUFFIX,homestyler.com," + DEV_NAME,
-    "DOMAIN-SUFFIX,homestyler.sjv.io," + DEV_NAME,
-    "DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com," + DEV_NAME,
+    // Homestyler 被 cn 规则集收录，但这里优先交给节点选择，避免被 RuleSet(cn) 截走。
+    "DOMAIN-SUFFIX,homestyler.com," + ENTRY_NAME,
+    "DOMAIN-SUFFIX,homestyler.sjv.io," + ENTRY_NAME,
+    "DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com," + ENTRY_NAME,
 
     "RULE-SET,cn,DIRECT",
     "GEOSITE,private,DIRECT",
@@ -123,22 +123,22 @@ function injectRules(config) {
     "GEOSITE,steam@cn,DIRECT",
     "GEOSITE,category-games@cn,DIRECT",
 
-    "GEOSITE,openai," + DEV_NAME,
-    "GEOSITE,youtube," + DEV_NAME,
-    "GEOSITE,google," + DEV_NAME,
-    "GEOSITE,github," + DEV_NAME,
-    "GEOSITE,telegram," + DEV_NAME,
-    "GEOSITE,twitter," + DEV_NAME,
-    "GEOSITE,pixiv," + DEV_NAME,
-    "GEOSITE,biliintl," + DEV_NAME,
-    "GEOSITE,category-scholar-!cn," + DEV_NAME,
-    "GEOSITE,geolocation-!cn," + DEV_NAME,
+    "GEOSITE,openai," + ENTRY_NAME,
+    "GEOSITE,youtube," + ENTRY_NAME,
+    "GEOSITE,google," + ENTRY_NAME,
+    "GEOSITE,github," + ENTRY_NAME,
+    "GEOSITE,telegram," + ENTRY_NAME,
+    "GEOSITE,twitter," + ENTRY_NAME,
+    "GEOSITE,pixiv," + ENTRY_NAME,
+    "GEOSITE,biliintl," + ENTRY_NAME,
+    "GEOSITE,category-scholar-!cn," + ENTRY_NAME,
+    "GEOSITE,geolocation-!cn," + ENTRY_NAME,
     "GEOSITE,cn,DIRECT",
 
     "GEOIP,private,DIRECT,no-resolve",
-    "GEOIP,telegram," + DEV_NAME,
+    "GEOIP,telegram," + ENTRY_NAME,
     "GEOIP,CN,DIRECT",
-    "MATCH," + DEV_NAME
+    "MATCH," + ENTRY_NAME
   ];
 
   return config;
