@@ -5,7 +5,8 @@
 # 脚本会自动读取 proxy-providers 下的所有 provider 名称，并生成：
 # - proxy-groups：🌐 发达地区自动 / 🇺🇸 美国自动 / 节点选择
 # - rule-providers：MetaCubeX 中国大陆域名规则集 cn
-# - rules：规则只有两个走向：DIRECT 和 🌐 发达地区自动；🇺🇸 美国自动只作为手动选项
+# - rules：需要直连的流量走 DIRECT；所有需要代理的流量统一交给“节点选择”
+# - 节点选择：可手动选择 🌐 发达地区自动、🇺🇸 美国自动、具体节点或 DIRECT
 #
 # 注意：公开仓库中不要写入真实订阅 URL、token 或节点密码。
 
