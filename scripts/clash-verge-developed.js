@@ -51,6 +51,11 @@ function makeRegex(items) {
   return "(?i)(" + items.join("|") + ")";
 }
 
+// 只匹配节点开头的美国地区，避免“日本07：美国中转”误入美国组
+function makePrimaryRegex(items) {
+  return "(?i)^\\s*(?:推荐\\s*[：:]?\\s*)?(?:🇺🇸\\s*)?(?:" + items.join("|") + ")";
+}
+
 function attachSources(group, providerNames) {
   if (providerNames && providerNames.length > 0) {
     group.use = providerNames;
@@ -62,8 +67,6 @@ function attachSources(group, providerNames) {
 }
 
 function attachEntrySources(group, providerNames) {
-  // 让 select 主入口除了自动代理组外，也能展开显示 provider 中的单个节点。
-  // 有 proxy-providers 时使用 use；没有 provider 时回退 include-all。
   return attachSources(group, providerNames);
 }
 
@@ -96,7 +99,6 @@ function createMrsRuleProvider(behavior, url, path) {
 function injectRuleProviders(config) {
   var geosite = "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/";
 
-  // 保留 MetaCubeX 中国大陆域名 rule-set；其他常见类别通过 GEOSITE/GEOIP 调用。
   config["rule-providers"] = {
     cn: createMrsRuleProvider("domain", geosite + "cn.mrs", "./rules/geosite-cn.mrs")
   };
@@ -107,13 +109,13 @@ function injectRuleProviders(config) {
 function injectRules(config) {
   var ENTRY_NAME = "节点选择";
 
-  // 需要直连的流量走 DIRECT；所有需要代理的流量统一交给“节点选择”。
-  // 用户可在“节点选择”中手动选择“🌐 发达地区自动”“🇺🇸 美国自动”或具体节点。
   config.rules = [
-    // Homestyler 被 cn 规则集收录，但这里优先交给节点选择，避免被 RuleSet(cn) 截走。
     "DOMAIN-SUFFIX,homestyler.com," + ENTRY_NAME,
     "DOMAIN-SUFFIX,homestyler.sjv.io," + ENTRY_NAME,
     "DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com," + ENTRY_NAME,
+
+    // 小红书通常会命中中国大陆规则；放在 cn 前面，确保图书馆等受限网络下强制走代理。
+    "GEOSITE,xiaohongshu," + ENTRY_NAME,
 
     "RULE-SET,cn,DIRECT",
     "GEOSITE,private,DIRECT",
@@ -194,13 +196,10 @@ function main(config, profileName) {
   var US_NAME = "🇺🇸 美国自动";
   var ALL_NAME = "♻️ 全部自动";
 
-  // 保留美国、日本、台湾、新加坡的完整中英关键词；
-  // 其他发达地区删除简体中文名称，降低 CC 小众地区假节点误入自动组的概率。
   var developedItems = [
     "台湾", "台灣", "\\btw\\b", "taiwan", "🇹🇼",
     "新加坡", "狮城", "獅城", "\\bsg\\b", "singapore", "🇸🇬",
     "日本", "东京", "東京", "大阪", "\\bjp\\b", "japan", "tokyo", "osaka", "🇯🇵",
-    "韓國", "首爾", "\\bkr\\b", "korea", "seoul", "🇰🇷",
     "美国", "美國", "\\bus\\b", "\\busa\\b", "united states", "america", "美西", "美东", "美東", "美中", "美南", "洛杉矶", "洛杉磯", "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸",
     "\\bca\\b", "canada", "🇨🇦",
     "英國", "\\buk\\b", "united kingdom", "britain", "london", "倫敦", "🇬🇧",
@@ -247,14 +246,16 @@ function main(config, profileName) {
   var usItems = [
     "美国", "美國", "美西", "美东", "美東", "美中", "美南",
     "\\bus\\b", "\\busa\\b", "united states", "america",
-    "洛杉矶", "洛杉磯", "los angeles", "san jose", "seattle", "new york", "dallas", "chicago", "washington", "🇺🇸"
+    "洛杉矶", "洛杉磯", "los angeles", "san jose", "seattle",
+    "new york", "dallas", "chicago", "washington", "🇺🇸"
   ];
 
   var infoItems = [
     "剩余流量", "套餐到期", "下次重置剩余", "重置剩余", "到期时间", "流量重置",
     "traffic", "expire", "expiration", "subscription", "subscribe", "reset", "plan",
-    "官网", "官方", "通知", "重要", "客户端", "更新", "升级", "审核", "补偿", "备用域名", "域名", "旧节点", "帮助中心",
-    "流量", "套餐", "到期", "重置", "剩余", "windows", "mac", "android", "ios-shadowrocket", "无法享受", "请尽快"
+    "官网", "官方", "通知", "重要", "客户端", "更新", "升级", "审核", "补偿",
+    "备用域名", "域名", "旧节点", "帮助中心", "流量", "套餐", "到期", "重置",
+    "剩余", "windows", "mac", "android", "ios-shadowrocket", "无法享受", "请尽快", "5倍"
   ];
 
   var regionExcludeItems = [
@@ -278,12 +279,34 @@ function main(config, profileName) {
   ];
 
   groups = removeGroupByName(groups, ALL_NAME);
-  groups = upsertGroup(groups, createUrlTestGroup(US_NAME, makeRegex(usItems), makeRegex(infoItems), providerNames, 50));
-  groups = upsertGroup(groups, createUrlTestGroup(DEV_NAME, makeRegex(developedItems), makeRegex(regionExcludeItems.concat(infoItems)), providerNames, 50));
+
+  groups = upsertGroup(
+    groups,
+    createUrlTestGroup(
+      US_NAME,
+      makePrimaryRegex(usItems),
+      makeRegex(infoItems),
+      providerNames,
+      50
+    )
+  );
+
+  groups = upsertGroup(
+    groups,
+    createUrlTestGroup(
+      DEV_NAME,
+      makeRegex(developedItems),
+      makeRegex(regionExcludeItems.concat(infoItems)),
+      providerNames,
+      50
+    )
+  );
+
   groups = ensureEntryGroup(groups, [DEV_NAME, US_NAME], providerNames);
 
   config["proxy-groups"] = groups;
   config = injectRuleProviders(config);
   config = injectRules(config);
+
   return config;
 }
