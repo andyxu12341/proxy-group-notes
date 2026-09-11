@@ -109,6 +109,7 @@ rules:
   - DOMAIN-SUFFIX,homestyler.com,节点选择
   - DOMAIN-SUFFIX,homestyler.sjv.io,节点选择
   - DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com,节点选择
+  - GEOSITE,xiaohongshu,节点选择
   - RULE-SET,cn,DIRECT
   - GEOSITE,private,DIRECT
   - GEOSITE,onedrive,DIRECT
