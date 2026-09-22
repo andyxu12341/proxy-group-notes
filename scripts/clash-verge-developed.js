@@ -108,14 +108,15 @@ function injectRuleProviders(config) {
 
 function injectRules(config) {
   var ENTRY_NAME = "节点选择";
+  var XHS_NAME = "📕 小红书";
 
   config.rules = [
     "DOMAIN-SUFFIX,homestyler.com," + ENTRY_NAME,
     "DOMAIN-SUFFIX,homestyler.sjv.io," + ENTRY_NAME,
     "DOMAIN,3d-resource.oss-cn-beijing.aliyuncs.com," + ENTRY_NAME,
 
-    // 小红书通常会命中中国大陆规则；放在 cn 前面，确保图书馆等受限网络下强制走代理。
-    "GEOSITE,xiaohongshu," + ENTRY_NAME,
+    // 小红书单独分组：默认 DIRECT；在图书馆等受限网络下可手动切到“节点选择”。
+    "GEOSITE,xiaohongshu," + XHS_NAME,
 
     "RULE-SET,cn,DIRECT",
     "GEOSITE,private,DIRECT",
@@ -194,6 +195,7 @@ function main(config, profileName) {
 
   var DEV_NAME = "🌐 发达地区自动";
   var US_NAME = "🇺🇸 美国自动";
+  var XHS_NAME = "📕 小红书";
   var ALL_NAME = "♻️ 全部自动";
 
   var developedItems = [
@@ -279,6 +281,14 @@ function main(config, profileName) {
   ];
 
   groups = removeGroupByName(groups, ALL_NAME);
+
+  // 小红书默认直连，避免中国 App 在正常网络下被绕到海外代理。
+  // 图书馆等受限网络下只需把“📕 小红书”手动切到“节点选择”。
+  groups = upsertGroup(groups, {
+    name: XHS_NAME,
+    type: "select",
+    proxies: ["DIRECT", "节点选择"]
+  });
 
   groups = upsertGroup(
     groups,
