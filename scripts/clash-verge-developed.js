@@ -181,6 +181,11 @@ function ensureEntryGroup(groups, groupNames, providerNames) {
 
 function main(config, profileName) {
   if (!config) return config;
+
+  // 不记住上次手动选择，避免 url-test 被长期固定在某个节点。
+  if (!config.profile || typeof config.profile !== "object") config.profile = {};
+  config.profile["store-selected"] = false;
+
   if (!Array.isArray(config["proxy-groups"])) config["proxy-groups"] = [];
 
   var groups = config["proxy-groups"];
