@@ -66,8 +66,11 @@ function attachSources(group, providerNames) {
   return group;
 }
 
-function attachEntrySources(group, providerNames) {
-  return attachSources(group, providerNames);
+function detachEntrySources(group) {
+  delete group.use;
+  delete group["include-all"];
+  delete group["include-all-proxies"];
+  return group;
 }
 
 function createUrlTestGroup(name, filterRegex, excludeRegex, providerNames, tolerance) {
@@ -75,9 +78,9 @@ function createUrlTestGroup(name, filterRegex, excludeRegex, providerNames, tole
     name: name,
     type: "url-test",
     url: "https://www.gstatic.com/generate_204",
-    interval: 300,
-    tolerance: tolerance || 50,
-    lazy: true,
+    interval: 60,
+    tolerance: tolerance || 20,
+    lazy: false,
     "expected-status": 204
   };
   if (filterRegex) group.filter = filterRegex;
@@ -150,37 +153,27 @@ function injectRules(config) {
 function ensureEntryGroup(groups, groupNames, providerNames) {
   var STANDARD_ENTRY_NAME = "节点选择";
   var standardEntryExists = false;
-  var entryNameRegex = /节点选择|代理|Proxy|PROXY|默认|GLOBAL|全局|选择/i;
 
   for (var i = 0; i < groups.length; i++) {
     var group = groups[i];
     if (!group) continue;
 
-    if (!Array.isArray(group.proxies)) group.proxies = [];
-    group.proxies = removeProxyByName(group.proxies, "♻️ 全部自动");
-
     if (group.name === STANDARD_ENTRY_NAME && group.type === "select") {
-      group.proxies = uniqPrepend(group.proxies, groupNames);
-      group = attachEntrySources(group, providerNames);
+      // 主入口只保留“自动组 + DIRECT”，不把 provider 的单个节点直接塞进来。
+      // 否则一旦手动点到具体节点，store-selected 会把它记住，看起来就像“钉死”。
+      group.proxies = groupNames.concat(["DIRECT"]);
+      group = detachEntrySources(group);
       groups[i] = group;
       standardEntryExists = true;
-      continue;
-    }
-
-    if (group.type === "select" && entryNameRegex.test(group.name || "")) {
-      group.proxies = uniqPrepend(group.proxies, groupNames);
-      group = attachEntrySources(group, providerNames);
-      groups[i] = group;
     }
   }
 
   if (!standardEntryExists) {
-    var entryGroup = {
+    groups = upsertGroup(groups, {
       name: STANDARD_ENTRY_NAME,
       type: "select",
       proxies: groupNames.concat(["DIRECT"])
-    };
-    groups = upsertGroup(groups, attachEntrySources(entryGroup, providerNames));
+    });
   }
 
   return groups;
@@ -297,7 +290,7 @@ function main(config, profileName) {
       makePrimaryRegex(usItems),
       makeRegex(infoItems),
       providerNames,
-      50
+      20
     )
   );
 
@@ -308,7 +301,7 @@ function main(config, profileName) {
       makeRegex(developedItems),
       makeRegex(regionExcludeItems.concat(infoItems)),
       providerNames,
-      50
+      20
     )
   );
 
